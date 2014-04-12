@@ -105,14 +105,19 @@ UIElement = Ent.extend({
 UI = Class.extend({
   template : null,
   style_conf : null,
-  create : function () {
+  ship_input : null,//dynamic hover
+  game_list : null,//right side
+  game_bar : null,//bottom
+  state_color : {
+      "move" : "rgb(200, 200, 240)",//blue
+      "fire" : "rgb(200, 200, 240)",//blue
+      "input" :"rgb(200, 240, 200)",//green
+      "wait" : "rgb(240, 200, 200)",//red
+    },
   
-    this.state_color = {
-      "move" : "rgb(200, 200, 240)",
-      "fire" : "rgb(200, 200, 240)",
-      "input" :"rgb(200, 240, 200)",
-      "wait" : "rgb(240, 200, 200)",
-    };
+  /* UI.create : sets up the hover box thing 
+   * */
+  create : function () {
   
     this.template = new UIElement();
     var template = this.template;
@@ -135,20 +140,18 @@ UI = Class.extend({
     this.ship_input.setAttribute("id", "ship_input");
     document.getElementsByTagName("body")[0].appendChild(this.ship_input);
     
-    this.createGameBar("state","connected","-","-","-","-")
+    //this.createGameBar("state","connected","^","v","move","fire")
     
-  },
-  scrollText : function (data) {
-    var c = this.game_bar_context;
-    c.font = "12pt Monospace";
-    c.strokeText(data,10,10);
   },
   /* createGameBar: initilizes the html UI and sets up "game_bar" JSON
    * for now this is the thingie along the bottom of the canvas
    * TODO: not use this*/
   createGameBar : function () {
+    
     this.template = new UIElement();
     var template = this.template;
+    
+    //arguments are 
     if (arguments.length > 0) template.items=[];
     for (var i=0;i<arguments.length;i++) {
       template.items.push(arguments[i]);
@@ -167,6 +170,8 @@ UI = Class.extend({
     p.style.width = canv.width + "px";
     p.style.height = template.sh*2 + "px";
     p.style.border = "1px solid black";
+    //p.style["border-image"] = "url(img/pencil-border.png) 30 30 stretch";
+    //p.style["background"] = "url(img/pencil-border.png) repeat-x";
     template.ite_style.width = template.sw + "px";
     var s = this.game_bar.s = listify(template);
     for (e in s.childNodes) {
@@ -174,54 +179,11 @@ UI = Class.extend({
       this.game_bar[c.innerHTML]= c;      
     }
     s.style.width = canv.width+"px";
-    s.style.height = template.sh*2+"px";
+    s.style.height = template.sh*2+"px";    
         
     canv.parentNode.insertBefore(p,canv.nextSibling);
     p.appendChild(this.game_bar.s);
   
-  },
-  /* createGameList: initilizes the html UI and sets up "game_list" JSON
-   * for now this is the thingie on the right of the canvas
-   * TODO: not use this*/
-  createGameList : function() {
-    this.template = new UIElement();
-    var template = this.template;
-    if (arguments.length > 0) template.items=[];
-    for (var i=0;i<arguments.length;i++) {
-      template.items.push(arguments[i]);
-    }
-  
-    //remove game_bar if it is already around
-    var t = document.getElementById("game_list");
-    if (t) t.parentNode.removeChild(t)
-  
-  
-    var canv = document.getElementById(CANVAS_ID);
-    this.game_list= {};    
-    var p = this.game_list.parent = document.createElement('div');
-    p.setAttribute("id","game_list");
-    p.style.position = "absolute";
-    p.style.left = canv.offsetLeft + canv.width + 5 + "px";
-    p.style.top = canv.offsetTop + "px";
-    p.style.width = template.sw*6 + "px";
-    p.style.height = canv.height + "px";
-    p.style.border = "1px solid black";
-    template.elm_style.width = template.sw*6 + "px";
-    template.ite_style.width = template.sw*6 + "px";
-    template.ite_style.height = template.sh*2 + "px";
-    template.ite_style["padding-top"] = "15px";
-    template.ite_style.display = "table-row";
-    template.ite_style.border = "1px solid black";
-    var s = this.game_list.s = listify(template);
-    for (e in s.childNodes) {
-      var c = s.childNodes[e];
-      this.game_list[c.innerHTML]= c;
-    }
-    //s.style.width = template.sw*2+"px";
-    //s.style.height = template.sh*2+"px";
-        
-    canv.parentNode.insertBefore(p,canv.nextSibling.nextSibling);
-    p.appendChild(this.game_list.s);
   },
   /* UI.update: should receive events from other objects
    * */
@@ -234,70 +196,71 @@ UI = Class.extend({
       this.game_bar["connected"].style.background = data ? 
         ""+this.state_color["wait"] : ""+this.state_color["input"];
     }
-  },
-  ship_input : null,//dynamic hover
-  game_list : null,//right side
-  game_bar : null//bottom
+  }  
 });
 
 EvListener = Class.extend({//TODO: use input library for cross platform
-  saveMouse : function (e){
-      var mouseX = (e.clientX - game.canvas_offset.x) / game.physics_offset;
-      var mouseY = (e.clientY - game.canvas_offset.y) / game.physics_offset;
   
-      if (e.type=="mousemove"){
-          //nothing for now.. push X,Y later
-      } else if (e.type=="mousedown") {
-          window.addEventListener('mousemove', this.saveMouse);
-          game.move_arr = [];
-          game.goent=false;
-          game.initDrag(mouseX,mouseY);
-      } else if (e.type=="mouseup") {
-          window.removeEventListener('mousemove', this.saveMouse);
-          game.goent=true;
-      }
-  
-      if (game.move_arr.length >= MOVE_MAX_LENGTH) game.move_arr.pop();
-      game.move_arr.push({x:mouseX,y:mouseY});
-      game.moved = true;
-      //if (game.click_arr.length >= CLICK_MAX_LENGTH) game.click_arr.pop();
-      //game.click_arr.push(e);
+  /* move : for now this gets called by mousemove or touchmove events
+   * */
+  move: function (v) {
+    
+    this.moved = true;
+    if (!this._inp) return;
+
+    if (v.touches && v.touches.length) {
+
+      v.x=v.touches[0].screenX;
+      v.y=v.touches[0].screenY;
+
+      v.x = ( v.x / this.touch_offset_X ) * this.canvas.width;
+      v.y = ( v.y / this.touch_offset_Y ) * this.canvas.height;
+
+    } else {
+      v.x = v.clientX;
+      v.y = v.clientY;
+    }
+    
+    if (this._drag){
+      this.move_arr.push({x:v.x,y:v.y});
+    }
+
   },
-  saveTouch : function (e){
-      //console.log(" TOUCH " + e.type + " NUM : " + e.touches.length);
-  
-      var move_arr = game.move_arr;
-      if (!e.targetTouches[0] && e.type!="touchend")
-          return;
-      else if (e.targetTouches[0]) {
-          var m = e.targetTouches[0];
-          var mouseX = (m.pageX - game.canvas_offset.x) / game.physics_offset;
-          var mouseY = (m.pageY - game.canvas_offset.y) / game.physics_offset;
+  mDown : function(v) {
+    
+    if (this._inp && v.touches) v.preventDefault();
+    
+    this._drag = true;
+    this.move_arr = [];
+    this.drag_start = this.ticks;
+  },
+  mUp : function(v) {
+    
+    if (!this._inp) {
+    console.log("hi");
+      
+      var X,Y;
+      
+      //touch event
+      if (v.targetTouches && v.targetTouches[0]) {
+        X = (v.pageX - this.canvas_offset.x) / this.physics_offset;
+        Y = (v.pageY - this.canvas_offset.y) / this.physics_offset;
+      
+      //mouse event
       } else {
-          var temp = move_arr.pop();
-          var mouseX = temp.x;
-          var mouseY = temp.y;
+        X = (v.clientX - this.canvas_offset.x) / this.physics_offset;
+        Y = (v.clientY - this.canvas_offset.y) / this.physics_offset;
       }
-  
-      if (e.type=="touchmove"){
-          //nothing for now.. push X,Y later
-      } else if (e.type=="touchstart") {
-          //e.preventDefault();
-          window.addEventListener('touchmove', this.saveTouch);
-          game.move_arr = [];
-          game.goent=false;
-          game.initDrag(mouseX,mouseY);
-  
-      } else if (e.type=="touchend") {
-          window.removeEventListener('touchmove', this.saveTouch);
-          game.goent=true;
-      }
-      if (game.move_arr.length >= MOVE_MAX_LENGTH) game.move_arr.pop();
-      game.move_arr.push({x:mouseX,y:mouseY});
-      game.moved = true;
-      //if (game.click_arr.length >= CLICK_MAX_LENGTH) game.click_arr.pop();
-      //game.click_arr.push(e);
-  },
+      
+      //triggers selecting entity based on direct clicks
+      //this.initDrag(X,Y);
+            
+      return;
+    }
+    
+    this.finishDrag(this.move_arr);
+    
+  },  
   detectKey : function (e){//just a test generation function for now
     //console.log(e.which);
     if (e.which===70 || e.which==84) {//f apply force
@@ -414,16 +377,24 @@ GameClient = Game.extend({
   /* createClient: called after generic create
    * */
   createClient : function () {
-  
+    
+    //these are used if on android mobile/chrome
+    this.touch_offset_X = window.screen.width == document.documentElement.clientWidth  
+      ? window.screen.width : window.outerWidth;
+    this.touch_offset_Y = window.screen.height == document.documentElement.clientHeight
+      ? window.screen.height : window.outerHeight;
+
     //input listeners
     this.ev = new EvListener();
-    window.addEventListener('mousedown', this.ev.saveMouse);
-    window.addEventListener('mouseup', this.ev.saveMouse);
-    window.addEventListener('mousemove', this.ev.saveMouse);
-    window.addEventListener('touchstart', this.ev.saveTouch, false);
-    window.addEventListener('touchend', this.ev.saveTouch, false);
-    window.addEventListener('touchmove', this.ev.saveTouch, false);
-    window.addEventListener('keydown', this.ev.detectKey)
+    window.addEventListener('keydown', this.ev.detectKey.bind(this))
+    
+    window.addEventListener('mousedown', this.ev.mDown.bind(this));
+    window.addEventListener('mouseup', this.ev.mUp.bind(this));
+    window.addEventListener('touchstart', this.ev.mDown.bind(this), false);
+    window.addEventListener('touchend', this.ev.mUp.bind(this), false);
+    
+    window.addEventListener('touchmove', this.ev.move.bind(this), false);
+    window.addEventListener('mousemove', this.ev.move.bind(this));
   
     //html tags
     var body = document.getElementById('body');
@@ -453,30 +424,61 @@ GameClient = Game.extend({
       "outline" : "none",
       "-webkit-tap-highlight-color" : "rgba(255, 255, 255)",
       }));
+    
+    document.getElementsByTagName('head')[0].appendChild(
+    cssify({
+      "tag" : ".flip-horizontal", 
+      "-moz-transform": "scaleX(-1)",
+      "-webkit-transform": "scaleX(-1)",
+      "-o-transform": "scaleX(-1)",
+      "transform": "scaleX(-1)",
+      "-ms-filter": "fliph", /*IE*/
+      "filter": "fliph" /*IE*/
+    }));
+    
+    document.getElementsByTagName('head')[0].appendChild(
+    cssify({
+      "tag":".flip-vertical",
+      "-moz-transform": "scaleY(-1)",
+      "-webkit-transform": "scaleY(-1)",
+      "-o-transform": "scaleY(-1)",
+      "transform": "scaleY(-1)",
+      "-ms-filter": "flipv", /*IE*/
+      "filter": "flipv" /*IE*/
+    }));
+      
   
     body.appendChild(this.canvas);
   
     //UI .. more html content
     this.ui = new UI();
     this.ui.create();
+    
+    //create game_bar
+    this.ui.createGameBar("state","connected","up","down","move","fire")
+    
+    //create game_bar functions
+    this.ui.game_bar["up"].onclick = this.uiIncrementTarget.bind(this,1);
+    this.ui.game_bar["down"].onclick = this.uiIncrementTarget.bind(this,-1);
+    this.ui.game_bar["move"].onclick = this.uiComm.bind(this,"move");
+    this.ui.game_bar["fire"].onclick = this.uiComm.bind(this,"fire");
+    
+    //modify the game bar to add arrows
+    this.ui.game_bar["up"].innerHTML = '<img src = "img/point.gif"></img>';
+    this.ui.game_bar["down"].innerHTML = '<img class = "flip-vertical" src = "img/point.gif"></img>'
   
-    //extra
+    //other important stuff
     this.canvas_offset = {x : this.canvas.offsetLeft,y : this.canvas.offsetTop};
     this.last_update = this.now;
   },
   /* drawAll: loops through ent_arr
    */
-  drawAll : function () {
+  drawAll : function (clear_flag) {
   
     var cw = this.canvas.width;
     var ch = this.canvas.height;
     var c = this.canvas.getContext("2d");
-    if (!this.tester) c.clearRect(0,0,cw,ch);
-  
-    /*var l = this.move_arr.length;
-    if (l > 0) {
-      this.drawDrag(this.ent_tar,this.move_arr[l-1]);
-    }*/
+    if (!this.tester&&!clear_flag) c.clearRect(0,0,cw,ch);
   
     //draw physics bodies
     for (var i=0; i < this.ent_arr.length; i++) {this.drawPhy(i,c,cw,ch);}
@@ -608,7 +610,7 @@ GameClient = Game.extend({
    * sets up entities and coordinates */
   initDrag : function (mouseX,mouseY) {
     var t = new b2Vec2(mouseX,mouseY);
-    var aabb = new Box2D.Collision.b2AABB();
+    var aabb = new b2AABB();
     aabb.lowerBound.Set(mouseX - CLICK_BOUND, mouseY - CLICK_BOUND);
     aabb.upperBound.Set(mouseX + CLICK_BOUND, mouseY + CLICK_BOUND);
   
@@ -621,73 +623,146 @@ GameClient = Game.extend({
     if (result) {
       this.ent_tar = result.GetBody().GetUserData().ent;
     } else {this.ent_tar = null;}
+    
+  },
+  /* finishDrag: draws a path to the game canvas
+   * also determine the speed of the drag to be used for a physics force
+   * TODO: compensate for the size of the device via pixels 
+   * TODO: recognize and/or normalize path for gestures */
+  finishDrag : function (path) {
+  
+    if (!path.length) return;
+    
+    this._inp = false;
+    this._drag = false;
+    this.drag_end = this.ticks;
+    this.has_to_draw = true;
+    
+    var 
+      ofs = {x : this.canvas.offsetLeft,y : this.canvas.offsetTop},
+      ctx = this.canvas.getContext("2d"),
+      dist = 0,      
+      force;
+    
+    var time = this.drag_end - this.drag_start;
+    var pos = this.ent_toggled.body.GetWorldCenter();
+    
+    var beg = {//beginning of path
+      x : path[0].x / this.physics_offset,
+      y : path[0].y / this.physics_offset
+    };
+    
+    var end = {//end of path
+      x : path[path.length-1].x / this.physics_offset,
+      y : path[path.length-1].y / this.physics_offset
+    };    
+    
+    //transfer the path vectors over top of the target entities position
+    beg.x -= end.x;
+    beg.y -= end.y;
+
+    end.x = pos.x - beg.x;
+    end.y = pos.y - beg.y;
+      
+    
+    ctx.strokeStyle = "rgb(0,0,255)";
+    ctx.beginPath();
+    
+    ctx.moveTo(path[0].x - ofs.x, path[0].y - ofs.y);
+    
+    for (var i=1;i<path.length;i++) {
+      
+      var a = path[i],
+          b = path[i-1];
+      
+      ctx.lineTo(a.x - ofs.x, b.y - ofs.y);
+      
+      //dist += Math.sqrt(Math.pow((b.x - a.x),2) + Math.pow((b.y - a.y),2));
+      dist += Math.pow((b.x - a.x),2) + Math.pow((b.y - a.y),2);
+      
+    }
+    
+    ctx.stroke();
+    
+    this.drag_vec = {
+      force : Math.round( dist / time ),
+      end : end
+    };
+    
+    
   },
   /* stateCheck: flow control for client - called by main update/step loop
    * TODO: figure out events for this */
   stateCheck : function () {
+  
     //update ui status bar
     this.ui.update("state",this.getStateStr());
+    
+    
+    
     // toggle UI
     if (this.cur_state === this.state_map["input"]){
-      if (this.state_arr.length > 0) {
+      
+      if (this.state_arr.length > 0) 
+      {
         this.cur_state = this.state_map[this.state_arr[0][0]];
         this.state_arr = [];
         this.clearUI();
         this.goent = false;
+        this._inp=true;
+        
       } else if (this.toggleUI &&
                 this.ent_tar && 
-                this.seats[0].team == this.ent_tar.team) {
-        this.toggleUI();
-      }       
-    // fire or move
-    } else if (this.cur_state === this.state_map["move"] ||
-               this.cur_state === this.state_map["fire"]) 
-    { 
-      if (this.goent && 
-          this.ent_toggled &&
-          this.move_arr.length > 0 &&
-          this.ent_toggled.type === ENT_TYPES["player"])
+                this.seats[0].team == this.ent_tar.team) 
       {
-        var subj = this.move_arr.shift();
-        if (this.move_arr.length==0){
-          this.drawDrag(subj,this.ent_toggled);
-          if (this.cur_state === this.state_map["fire"]) {
-            this.comm.msg_out.push(
-              {"fireProjectile":{x:subj.x,y:subj.y,id:this.ent_toggled.id}});
-            this.fireProjectile(this.ent_toggled,subj);            
-          } else if (this.cur_state === this.state_map["move"]) {              
-            this.comm.msg_out.push(
-              {"moveEnt":{x:subj.x,y:subj.y,id:this.ent_toggled.id}});
-            this.moveEnt(this.ent_toggled,subj);
-          }
-          this.ent_toggled = null;
-          this.ent_tar = null;
-        }
-      } else if (!this.ent_toggled && this.pollMotion())
-          this.cur_state = this.state_map["wait"];
-    }
-  },
-  /* drawDrag: generates doo-dads based on input
-   * TODO: */
-  drawDrag: function (dest,src){
-    if (!dest || !src) return;
-    var ctx = this.canvas.getContext("2d"),
-      _dest = {x:(dest.x*this.physics_offset)-game.canvas_offset.x,
-               y:(dest.y*this.physics_offset)-game.canvas_offset.y},
-      _src = {x:(src.x*this.physics_offset)-game.canvas_offset.x,
-              y:(src.y*this.physics_offset)-game.canvas_offset.y}
-    ;
+        this.toggleUI();
+      }
     
-    ctx.strokeStyle = "rgb(0,0,255)";
-    ctx.beginPath();
-    ctx.moveTo(_src.x,_src.y)
-    ctx.lineTo(_dest.x,_dest.y);
-    ctx.closePath();
-    ctx.stroke();
-  
-  },
-  /* updateClient: do animation frames.. separating from main game loop
-   * */
+    
+    
+    // turn is over
+    } else if (
+      !this.ent_toggled && 
+      this.pollMotion() && 
+      (this.cur_state === this.state_map["move"] || 
+      this.cur_state === this.state_map["fire"])) 
+    {      
+      this.cur_state = this.state_map["wait"];
+    
+    
+    
+    // a command has been sent
+    } else if (
+      this.drag_vec && 
+      (this.cur_state === this.state_map["fire"] || 
+      this.cur_state === this.state_map["move"])) 
+    {      
+      
+      var dv = this.drag_vec;
+      var subj = this.cur_state === this.state_map["move"] ?
+        "moveEnt" : "fireProjectile";
+      
+      var result = {};
+      result[subj] = {
+          x:dv.end.x,
+          y:dv.end.y,
+          id:this.ent_toggled.id,
+          force:dv.force
+      };
+      
+      this.comm.msg_out.push(result);
+      this.comm.msg_in.push(result);
+      
+      this.ent_tar = null;
+      this.ent_toggled = null;
+      this.drag_vec = null;
+      this._inp = null;
+      //this.t_ent = null;
+    }    
+    
+  },  
+  /* updateClient: do animation frames and network calls
+   * separate from main game loop */   
   updateClient : function() {
   
     if (this.has_to_draw || !this.pollMotion())
@@ -695,6 +770,8 @@ GameClient = Game.extend({
   
     var now = this.now;
     this.now = new Date().getTime();
+    
+    
     if (this.moved &&
        ((now - this.last_update) > this.poll) &&
         !this.paused) 
@@ -702,10 +779,81 @@ GameClient = Game.extend({
       this.comm.go(this.cur_state+this.comm.sep+this.comm.I,this.comm.cb);
       this.moved = false;
       this.last_update = now;
+    
+    
     } else if(now - this.last_update > this.must_poll) {
       this.moved = true;
     }
+    
+    //recursive call
     window.rAF(this.updateClient.bind(this));
+    
+  },
+  /* uiIncrementTarget: select the next entity
+   * */
+  uiIncrementTarget : function (dir) {
+    
+    var 
+      ctx = this.canvas.getContext("2d"),
+      prev_tar,
+      tar,
+      subj;
+    
+    //initialize
+    if (typeof this.t_ent != "number") this.t_ent = -1;    
+    //save previous target
+    prev_tar = this.t_ent;
+    
+    // set target entity based on dir
+    this.t_ent += dir;
+    if (this.t_ent >= this.ent_arr.length) 
+      this.t_ent = 0;
+    else if (this.t_ent < 0) 
+      this.t_ent = this.ent_arr.length + dir;      
+    
+    tar = this.ent_arr[this.t_ent]
+    
+    if (typeof this.ent_arr[this.t_ent] == "undefined" || 
+        this.t_ent == prev_tar)
+      return; //give up! TODO:not
+
+    subj = {
+      x:this.ent_arr[this.t_ent].body.GetWorldCenter().x * this.physics_offset,
+      y:this.ent_arr[this.t_ent].body.GetWorldCenter().y * this.physics_offset,
+      s:this.ent_arr[this.t_ent].sw,
+      c:this.ent_arr[this.t_ent].team == this.seats[0].team ? 
+        this.ui.state_color["input"] : this.ui.state_color["wait"]
+    };
+    
+    //clear and draw entities again
+    this.drawAll(); 
+    
+    //draw circle
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.arc(subj.x,subj.y,subj.s,0,2*Math.PI,false);
+    ctx.fillStyle = subj.c;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    
+  },
+  /* uiComm: send commands from the game bar
+   * */
+  uiComm : function (comm) {
+  
+    var tar;
+    
+    if (typeof this.t_ent == "undefined" || typeof this.ent_arr[this.t_ent] == "undefined")
+      return;
+    else 
+      tar = this.ent_arr[this.t_ent];
+      
+    if (tar.team != this.seats[0].team)
+      return;
+    
+    this.ent_toggled = tar;
+    this.pushState(comm);
+    this.t_ent = null;
   }
 });
 
@@ -759,17 +907,18 @@ Comm.prototype.go = function (data,fn) {
 
 Ship.prototype.draw = function (ctx,w,h,draw_health) {  
   try { 
+    
     ctx.drawImage(this.img,this.ctx,this.cty,w,h); 
   
     if (this.doodads) {
       for (var i=0;i<this.doodads.length;i++) {
-        var d,_x,_y,_w,_h;
-        d = this.doodads[i];
-        _x = this.ctx + d.ctx;
-        _y = this.cty + d.cty;
-        _w = d.sw;
-        _h = d.sh;
-        ctx.drawImage(d.img,_x,_y,_w,_h);
+        ctx.drawImage(
+          this.doodads[i].img,
+          this.ctx + this.doodads[i].ctx,
+          this.cty + this.doodads[i].cty,
+          this.doodads[i].sw,
+          this.doodads[i].sh
+        );        
       }
     }
     
@@ -778,8 +927,8 @@ Ship.prototype.draw = function (ctx,w,h,draw_health) {
       ctx.fillRect(+Math.abs(this.ctx),-Math.abs(this.cty),w*0.1,this.health*2);
     }  
   
-  } catch (e) {
-    console.log(e);
+  } catch (e) {    
+    //console.log(e);    
   }
 }
 

@@ -1,8 +1,6 @@
 /*vim ts=2 sw=2
 giving up and using jquery/bootstrap -pete 2014-02-21*/
 
-var ui = game.ui;
-game.stateCheck=function(){};
 
 //straight from Angular.js
 function isElement(node) {
@@ -174,6 +172,9 @@ evtSource.addEventListener('message', function(e) {
   console.log(data);
 }, false);                                             
 
+
+var ui = game.ui;
+game.stateCheck=function(){};
 
 var t = '<button type="button" id="load_sub" data-loading-text="load..." class="btn-lg btn-primary"> load </button>'
 ui.createGameBar("state","connected",'up<br />^','down<br />v',"yes",t);

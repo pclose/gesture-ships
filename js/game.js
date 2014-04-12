@@ -18,6 +18,7 @@ var b2Vec2 = Box2D.Common.Math.b2Vec2,
  b2DebugDraw = Box2D.Dynamics.b2DebugDraw,
  b2FilterData = Box2D.Dynamics.b2FilterData,
  b2ContactListener = Box2D.Dynamics.b2ContactListener,
+ b2AABB =  Box2D.Collision.b2AABB,
     
  b2Transform = Box2D.Common.Math.b2Transform,
  b2Mat22 = Box2D.Common.Math.b2Mat22,
@@ -144,7 +145,7 @@ Ship = Ent.extend({
     this.collision_mask =        /*entities by OR operation allow collision*/ 
       (b << nt) | (b << nt << p);/*with the other team and its projectiles*/
   },
-  onCollide : function(other_ent) {
+  onCollide : function(other_ent,collision) {
     this.health += other_ent.dmg;
     if (this.health <= 0) this.dead = true;
   },
@@ -180,7 +181,7 @@ Ship = Ent.extend({
     //slow the body down
     //TODO: make realistic
     //if (Math.abs(v.x) > MOTION_LIM_TEST || Math.abs(v.y) > MOTION_LIM_TEST) {
-      
+      //for some reason the check above completely breaks between browser and node...
       this.body.SetLinearDamping(this.drag);
     //}
     //set position if the body is stopped.
@@ -229,11 +230,10 @@ Projectile = Ship.extend({
     this.collision_mask =
       (b << nt) | (b << t << p);
   },
-  onCollide : function(other_ent) {
-    this.health += other_ent.dmg;
-    if (this.health <= 0) this.dead = true;
+  onCollide : function(other_ent) {    
+    this.dead = true;
   },
-  procEdges : function (){
+  /*procEdges : function (){
     //test if the body fell off the canvas      
     var pos = this.body.GetPosition();
     var ang = this.body.GetAngle();
@@ -245,7 +245,7 @@ Projectile = Ship.extend({
       this.dead = true;
     else if (pos.y < this.physXY.pH_)
       this.dead = true;
-  },
+  },*/
   procUpdate : function (){
     this.parent();
     var t = this.body.GetLinearVelocity();
@@ -334,7 +334,7 @@ Phys = Class.extend({
 /* Game: generic class for a game 
  * extended by the client or server */
 Game = Class.extend({  
-  game_id: null, 
+  game_id: null, ticks: 0,
   ent_arr : [], state_arr : [],
   ent_toggled : null, ui_toggled : false, 
   
@@ -343,7 +343,7 @@ Game = Class.extend({
   
   int: null, now : null, poll : POLL, must_poll : MUST_POLL,
   move_arr : [], ent_tar : null, goent : false, go : true,
-  click_arr : [],
+  drag_start:null,drag_end:null,_inp:null,_drag:null,
   canvas_offset : null, physics_offset : PHY_OFS, physics_scale : PHY_SCALE,
   
   physics : null,tester : false,
@@ -357,7 +357,7 @@ Game = Class.extend({
   
   /* create: 
    */  
-  create : function () {
+  create : function (settings) {
   
     //physics world and bodies
     this.physics = new Phys();
@@ -365,7 +365,11 @@ Game = Class.extend({
     this.go = true;
     this.physics.addContactListener({
       BeginContact: function (bodyA, bodyB, impulse) {
-        //console.log("boom!");
+        
+        
+        //bodyA.GetContactPoints();
+        
+        
         var bA = bodyA.GetUserData();
         var bB = bodyB.GetUserData();
         if (!bA || !bB) return;
@@ -384,7 +388,8 @@ Game = Class.extend({
     
     //TODO: make size dynamic or scrolling
     this.now = new Date().getTime();
-    this.gsize = {w : 600, h : 600};    
+    if (settings && (!settings.x||!settings.y)) this.gsize = {w : 600, h : 600};    
+    else this.gsize = {w : 600, h : 600};    
     this.pX=(this.gsize.w+this.physics_scale)/this.physics_offset;
     this.pY=(this.gsize.h+this.physics_scale)/this.physics_offset;
   },
@@ -399,7 +404,11 @@ Game = Class.extend({
     var pos = ent.body.GetWorldCenter();
     
     move.Subtract(pos);
-    move.Multiply(MOVE_FORCE_MULT * ent.proj_force_mult);
+    
+    if (subj.force)
+      move.Multiply(subj.force);
+    else
+      move.Multiply(MOVE_FORCE_MULT * ent.move_force_mult);
     
     ent.destination_radians = Math.atan2(move.x,-move.y);
     
@@ -424,7 +433,11 @@ Game = Class.extend({
     var pos = ent.body.GetWorldCenter();
     
     move.Subtract(pos);
-    move.Multiply(MOVE_FORCE_MULT * ent.move_force_mult);
+    
+    if (subj.force)
+      move.Multiply(subj.force);
+    else
+      move.Multiply(MOVE_FORCE_MULT * ent.move_force_mult);
     
     ent.destination_radians = Math.atan2(move.x,-move.y);
         
@@ -434,6 +447,7 @@ Game = Class.extend({
   /* updateEnt: updates all entities
    */  
   update : function (pre) {
+    this.ticks++;
     //step changes to physics world
     this.physics.update()
     //step changes to entities
@@ -552,7 +566,7 @@ Game = Class.extend({
     if (this.seats[id].is_turn) 
       this.stepTurn();
     
-    this.seats.splice(id,1);    
+    this.seats.splice(id,1);
   },
   /* stepTurn: essentially just increments the seat by 1
    * TODO: add sorting function to fillSeat to make this accurate*/
@@ -640,7 +654,7 @@ Game = Class.extend({
       var ent = this.ent_arr[this.getEntIndexById(val.id)];
       if (ent) {
         try {
-          this[keys[0]](ent,val);
+          this[keys[0]](ent,val);     
         } catch (e) {
           console.log(e.stack);
         }        
