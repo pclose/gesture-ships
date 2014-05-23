@@ -18,5 +18,6 @@
     "type":"projectile",
     "count":1,
     "dmg":2
-  }]
+  }],
+  "shield":{"front":5,"back":5}
 }]

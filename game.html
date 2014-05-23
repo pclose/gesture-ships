@@ -13,9 +13,15 @@
 <script src="js/client.js"></script>
 
 
-<script type="text/javascript">
+<script type="text/javascript">3
+var game = new GameClient();
+IS_SERVER=false;
+game.create();
+game.createClient();
+game.moved = true;
+
 game.run(game);
-game.comm.go("/hello",game.comm.cb);
+game._init();
 </script>
 </body>
 </html> 

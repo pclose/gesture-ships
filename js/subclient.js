@@ -123,10 +123,10 @@ loadSub=function(){
         function(v){
           game.create();
           game.cur_state=val.I;
-          game.comm.cb = gameCbProxy;
+          //game.comm.cb = gameCbProxy;
           game.comm.sep="_";
           game.comm.uri="/ships/sub";
-          game.comm.go(val.I+"_0",game.comm.cb);
+          game.comm.go(val.I+"_0",game.comm.cb.bind(game));
           game.run();
       });
       $(result[result.length-1])[0][1].click(
@@ -134,10 +134,10 @@ loadSub=function(){
           game.create();
           game.cur_state=val.I;
           game.comm.I = val.event_list_length;
-          game.comm.cb = gameCbProxy;
+          //game.comm.cb = gameCbProxy;
           game.comm.sep="_";
           game.comm.uri="/ships/sub";
-          game.comm.go(val.I+"_h",game.comm.cb);
+          game.comm.go(val.I+"_h",game.comm.cb.bind(game));
           game.run();
       });
   
@@ -165,13 +165,20 @@ loadSub=function(){
   
 }
 
-var evtSource = new EventSource("/ships/ships-stream");
-                                                       
+/*
+var evtSource = new EventSource("/ships/ships-stream");                                                       
 evtSource.addEventListener('message', function(e) {
   var data = JSON.parse(e.data); 
   console.log(data);
 }, false);                                             
+*/
 
+
+var game = new GameClient();
+IS_SERVER=false;
+game.create();
+game.createClient();
+game.moved = true;
 
 var ui = game.ui;
 game.stateCheck=function(){};

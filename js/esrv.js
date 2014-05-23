@@ -289,7 +289,7 @@ server.get(/.*\/hello$/,function (req,res){
     b.id = rid;
     b.type = "player";
     var t_seat = g.fillSeat(b);
-    var team = g.seats[t_seat].team;
+    var team = g.seats[t_seat].team; //FIXME: sometimes this fails
     var ship = gb.genShip(team);
     g.putComms({"addEnt":ship});
     g.stepTurn();
