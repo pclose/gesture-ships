@@ -12,7 +12,7 @@ function isElement(node) {
 tablefy=function(t,h,v){
   function doRow(tag1,tag2,e){
     var o1="<"+tag1+">",c1="<"+tag1+"/>",o2="<"+tag2+">",c2="<"+tag2+"/>";
-    return o1+o2+e.join(c2+o2)+c2+o1; 
+    return o1+o2+e.join(c2+o2)+c2+o1;
   }
   var head = $("<thead>").html(doRow("tr","th",h));
   var body = $("<tbody>").html(doRow("tr","td",v));
@@ -27,17 +27,17 @@ genUL = function (content) {
     for (var n=0; n < keys.length; n++ ){
       var v = obj[keys[n]];
       var k = keys[n];
-      if (obj.hasOwnProperty(k)) { 
+      if (obj.hasOwnProperty(k)) {
         ite.push(k + " : <small>" + v + "</small>");
       }
     }
     result.push("<li>"+ite.join("</li><li>")+"</li>");
-  }); 
+  });
 
   var o = '<ul class="list-unstyled">', e = '</ul>';
   var h = "<h4> count <small>"+content.length+"</small></h4>";
   return h+o+result.join(e+o)+e;
-   
+
 }
 
 genCollapsableDiv = function(content,ID,link) {
@@ -82,7 +82,7 @@ jTablefy=function(t,h,v){
   for (var i=0;i<v.length;i++) {
     body.append(doRow("tr","td",v[i]));
   }
-  
+
   t.append(head);
   t.append(body);
   return t;
@@ -90,25 +90,25 @@ jTablefy=function(t,h,v){
 
 //var subt;
 loadSub=function(){
-  
+
   var result = [];
   $.ajax('/ships/sub',{contentType:"application/json"}).done(function(data){
     //each item from default sub is a game
     $.each(data, function(key,val) {
-    
-      /*var _seatz=[],seatz; 
+
+      /*var _seatz=[],seatz;
       val.seats.forEach(function(v){
         _seatz.push("<li>"+[v.id,v.is_turn,v.team,v.type].join("</li><li>")+"</li>");
-      }); 
+      });
       seatz="<ul>"+_seatz.join("</ul><ul>")+"</ul>";*/
-       
+
       var container = document.createElement("div");
       container.appendChild(genCollapsableDiv(
         genUL(val.seats),val.id,"seats"));
       container.appendChild(genCollapsableDiv(
         genUL(val.ships),val.id,"ships"));
-      
-  
+
+
       result.push(
       [
         [$("<button id=replay_"+val.I+">#"+val.I+"</button>")
@@ -117,8 +117,8 @@ loadSub=function(){
         val.event_list_length,
         container
       ]);
-     
-  
+
+
       $(result[result.length-1])[0][0].click(
         function(v){
           game.create();
@@ -140,9 +140,9 @@ loadSub=function(){
           game.comm.go(val.I+"_h",game.comm.cb.bind(game));
           game.run();
       });
-  
-  
-  
+
+
+
     });
   var subt = jTablefy(
     $("<table>" , { "class":"table", "id":"games", }),
@@ -157,26 +157,25 @@ loadSub=function(){
     div.css({ position:"absolute", left:600, top:10 });
   }
   div.html("");
-  
-  
+
+
   div.append(subt);
   });
-  
-  
+
+
 }
 
 /*
-var evtSource = new EventSource("/ships/ships-stream");                                                       
+var evtSource = new EventSource("/ships/ships-stream");
 evtSource.addEventListener('message', function(e) {
-  var data = JSON.parse(e.data); 
+  var data = JSON.parse(e.data);
   console.log(data);
-}, false);                                             
+}, false);
 */
 
 
 var game = new GameClient();
 IS_SERVER=false;
-game.create();
 game.createClient();
 game.moved = true;
 

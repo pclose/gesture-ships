@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 #limitations under the License.*/
 
-	
+
 
 
 merge = function(original, extended)
@@ -40,7 +40,7 @@ merge = function(original, extended)
     return original;
 };
 
-function copy(object) 
+function copy(object)
 {
     if (
    !object || typeof (object) != 'object' ||
@@ -81,7 +81,7 @@ function copy(object)
 
      return values;
     };
-    
+
 // -----------------------------------------------------------------------------
 // Class object based on John Resigs code; inspired by base2 and Prototype
 // http://ejohn.org/blog/simple-javascript-inheritance/
@@ -171,7 +171,7 @@ this.Class.extend = function(prop)
                     return obj;
                 }
             }
-      
+
             for (var p in this)
             {
                 if (typeof (this[p]) == 'object')
@@ -179,7 +179,7 @@ this.Class.extend = function(prop)
                     this[p] = copy(this[p]); // deep copy!
                 }
             }
-      
+
             if (this.init)
             {
                 this.init.apply(this, arguments);
@@ -196,7 +196,7 @@ this.Class.extend = function(prop)
     return Class;
 };
 })();
- 
+
   newGuid_short = function()
   {
     var S4 = function() { return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1); };
@@ -208,4 +208,103 @@ this.Class.extend = function(prop)
     var S4 = function() { return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1); };
     return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4()).toString();
   };
+
+
+
+var cssify = function(obj){
+  //This is awful!
+  //think stringify, but css.. i promise to use jquery next time
+  if (!obj) return;
+
+  var val = [],
+  result = "",
+  is_inline = true,
+  sep = "; ",
+  keys=Object.keys(obj);
+
+  if (
+  keys.indexOf("class") > -1 ||
+  keys.indexOf("id") > -1 ||
+  keys.indexOf("tag") > -1){
+    sep = ';\n';
+    is_inline = false;
+  }
+
+  for (var n=0; n < keys.length; n++ ){
+    var s = obj[keys[n]];
+    var i = keys[n];
+    if (obj.hasOwnProperty(i)){
+      if (i == "class") result+="." + s + " {\n";
+      else if(i == "id") result+="#" + s + " {\n";
+      else if(i == "tag") result+= s + " {\n";
+      else val.push(i);
+    }
+  }
+
+  for (var i = 0; i < val.length; i++){
+    result += val[i] + ":" + obj[val[i]] + sep
+  }
+
+  if (!is_inline) {
+      result+='}';
+      var style = document.createElement('style');
+      style.type = 'text/css';
+      style.innerHTML=result;
+      return style;
+  }
+  return result
+}
+
+var listify = function(obj){
+
+  var result,outer,inner;
+  var elm_style=cssify(obj.elm_style);
+  var ite_style=cssify(obj.ite_style);
+
+  if (obj.type == "ul"){
+    outer="ul";
+    inner="li";
+  } else if (obj.type == "tr"){
+    outer="tr";
+    inner="td";
+  } else if (obj.type == "th"){
+    outer="tr";
+    inner="td";
+  }
+
+  if (inner && outer) {
+    result = document.createElement(outer);
+    if (elm_style) result.setAttribute("style",elm_style);
+    obj.items.forEach(function(i){
+      var t = document.createElement(inner);
+      t.innerHTML=i;
+      if (obj.ite_style) t.setAttribute("style",ite_style);
+      if (obj.ite_callback)
+        t.addEventListener(obj.ite_callback.func, obj.ite_callback.callback);
+      result.appendChild(t);
+    });
+  }
+  return result
+}
+
+//http://jsfiddle.net/dystroy/U3jHd/
+function goclone(source) {
+    if (Object.prototype.toString.call(source) === '[object Array]') {
+        var clone = [];
+        for (var i=0; i<source.length; i++) {
+            if (source[i]) clone[i] = goclone(source[i]);
+        }
+        return clone;
+    } else if (typeof(source)=="object") {
+        var clone = {};
+        for (var prop in source) {
+            if (source.hasOwnProperty(prop)) {
+                clone[prop] = goclone(source[prop]);
+            }
+        }
+        return clone;
+    } else {
+        return source;
+    }
+}
 

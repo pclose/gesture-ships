@@ -7,17 +7,16 @@ it has been a lot of fun so far
 - works in most browsers that i can test
 - more to come...
 
-tested with Nodejs v0.10
-
 install dependency:
 ```
-  $ npm install express
+  $ npm install
 ```
 
 start it up with:
 ```
   $ node js/esrv.js
 ```
+
 point your browser to the url and voilà!
 
 should run nicely behind reverse proxy too 

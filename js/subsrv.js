@@ -11,23 +11,23 @@ var subsrv = module.exports = function (g) {
 
 subsrv.prototype.sub = function (req,res) {
   var url = req.url.replace(/\/sub/,"");
-  
+
   //return a list of games
   if (url == "/" || url == "") {
     res.json(getGames());
-    
+
   //replay a game
   } else if (url.match(/\/\d+_\d+/)) {
-    var result = url.match(/\d+_\d+?$/)[0].split(/_/);    
+    var result = url.match(/\d+_\d+?$/)[0].split(/_/);
     var g = this.gb.games[result[0]];
     var re = [];
-    if (g) 
+    if (g)
        re = g.getComms(result[1]);
     res.json(re);
-  
+
   //subscribe to a game
   } else if (url.match(/\/\d+_h/)) {
-    var result = url.match(/\d+_h$/)[0].split(/_/);    
+    var result = url.match(/\d+_h$/)[0].split(/_/);
     var g = this.gb.games[result[0]];
     var re = [];
     if (g) {
@@ -35,12 +35,16 @@ subsrv.prototype.sub = function (req,res) {
       re = re.concat(g.getComms(g.event_list.length));
     }
     res.json(re);
+
+
+  } else {
+    res.send(400);
   }
-  
+
 }
 
 
-getGames = function() { 
+getGames = function() {
   var result = [];
   for (var i=0;i < gb.games.length;i++) {
     var e = {};
@@ -51,7 +55,7 @@ getGames = function() {
     e.ships = gb.games[i].getShips(true);
     result.push(e);
   }
-  return result;  
+  return result;
 }
 
 z = function () {

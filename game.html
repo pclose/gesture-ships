@@ -7,21 +7,27 @@
   <meta property="og:description" content="Space battles! on paper.. no wait.. in your web browser!"/>
 </head>
 <body id="body">
+
 <script src="js/core.js"></script>
 <script src="js/box2D.js"></script>
+
 <script src="js/game.js"></script>
+<script src="js/ship.js"></script>
+<script src="js/projectile.js"></script>
+<script src="js/phys.js"></script>
+
 <script src="js/client.js"></script>
+<script src="js/interface.js"></script>
+<script src="js/input.js"></script>
 
 
-<script type="text/javascript">3
+<script type="text/javascript">
+
 var game = new GameClient();
-IS_SERVER=false;
-game.create();
 game.createClient();
-game.moved = true;
+game.run();
+game.setupHello();
 
-game.run(game);
-game._init();
 </script>
 </body>
-</html> 
+</html>

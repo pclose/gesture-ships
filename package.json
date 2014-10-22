@@ -1,0 +1,13 @@
+{
+  "name": "gesture-ships",
+  "private": true,
+  "author": "Peter Close <close.peter@gmail.com>",
+  "main": "js/esrv.js",
+  "engines" : { "node" : ">=0.10" },
+  "dependencies": {
+    "express" : ">=4.9.6",
+    "body-parser": ">=1.9",
+    "express-session":">=1.9",
+    "cookie-parser": ">=1.3.3"
+  }
+}
