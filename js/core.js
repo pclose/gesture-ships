@@ -308,3 +308,35 @@ function goclone(source) {
     }
 }
 
+
+/* getCords: normalize click event x/y data
+ * */
+function getCords(_game,v) {
+
+  //touch
+  if (v.touches && v.touches.length) {
+
+    v.x=v.touches[0].screenX;
+    v.y=v.touches[0].screenY;
+
+    v.x = ( v.x / _game.touch_offset_X ) * _game.canvas.width;
+    v.y = ( v.y / _game.touch_offset_Y ) * _game.canvas.height;
+ 
+  //touch with no drag??
+  } else if (v.changedTouches && v.changedTouches.length) {
+    
+    v.x=v.changedTouches[0].screenX;
+    v.y=v.changedTouches[0].screenY;
+
+    v.x = ( v.x / _game.touch_offset_X ) * _game.canvas.width;
+    v.y = ( v.y / _game.touch_offset_Y ) * _game.canvas.height;
+  
+  //mouse move
+  } else {
+    v.x = v.clientX;
+    v.y = v.clientY;
+  }
+
+  return v;
+}
+

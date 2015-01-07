@@ -70,8 +70,11 @@ EvListener = Class.extend({//TODO: use input library for cross platform
 
     if (is_during_game) {
       this.drawAll();
+      var game_bar_height = this.abs_size * GAME_BAR_RATIO;
       this.ui.game_bar.div.style.width = this.canvas.width + "px";
       this.ui.game_bar.s.style.width = this.canvas.width + "px";
+      this.ui.game_bar.div.style.height = game_bar_height + "px";
+      this.ui.game_bar.s.style.height = game_bar_height  + "px";
     }
 
 
@@ -125,7 +128,7 @@ GameClient.prototype.checkAndToggleEnt = function (mouseX,mouseY) {
 
 /* getCords: normalize click event x/y data
  * */
-function getCords(game,v) {
+/*function getCords(game,v) {
 
   //touch
   if (v.touches && v.touches.length) {
@@ -143,7 +146,7 @@ function getCords(game,v) {
   }
 
   return v;
-}
+}*/
 
 
 

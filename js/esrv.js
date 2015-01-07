@@ -6,10 +6,10 @@ var  qs = require("querystring");
 var  url = require("url");
 var path = require("path");
 var repl = require("repl");
-var  WS_INDEX = "/game.html";
+var WS_INDEX = "/game.html";
 var HTTP_INDEX = "/ships";
 var LISTEN_ADDR = "0.0.0.0";
-var  LISTEN_PORT = "1337";
+var LISTEN_PORT = "1337";
 var GAME_AGE = 2*60*1000; //2min
 var GAME_CULL_FREQ = 6000; //6sec
 var subsrv = require("./subsrv.js");
@@ -21,8 +21,6 @@ var express = require("express");
 var session = require('express-session');
 var body_parser = require('body-parser');
 var cookie_parser = require('cookie-parser');
-
-
 
 var logger = util;
 
@@ -41,6 +39,8 @@ var server_context = vm.createContext({
 
 var s = server_context;
 
+/* Comm.go: servers Comm object
+ * successful request */
 s.Comm.prototype.go = function (callb,obj){
   if (typeof callb == "function")
     callb(obj);
@@ -48,10 +48,20 @@ s.Comm.prototype.go = function (callb,obj){
     this.callb(obj);
 }
 
+
+
 GameSrv = s.Game.extend({
+
+
+
   step : null,
   event_list : [],
   has_new_ships : false,
+
+
+
+  /* getShips: gets a list of ships for this game
+   * filter attributes also */
   getShips : function (no_comm) {
     result = [];
     for (var i = 0; i < this.ent_arr.length; i++) {
@@ -67,14 +77,27 @@ GameSrv = s.Game.extend({
       }
     return result;
   },
-  getSeats : function (filter,val) {
+
+
+  /* getSeats: returns a list of the seats for this game
+   * includes the fillSeat game function as well */
+  getSeats : function (filter,val,fn) {
+    fn = fn ? fn : "fillSeat";
     result = [];
     for (var e=0; e<this.seats.length;e++) {
-      if (this.seats[e][filter] == val)
-        result.push({"fillSeat" : this.seats[e]});
+      if (this.seats[e][filter] == val) {
+        var o = {};
+        o[fn] = this.seats[e];
+        result.push(o);
+      }
     }
     return result;
   },
+
+
+
+  /* getTurn: for the seat corresponding to the argument passed
+   * return the command to send back to the client */
   getTurn : function (rid) {
     result = [];
     var i = this.getSeatIndexById(rid);
@@ -85,14 +108,19 @@ GameSrv = s.Game.extend({
       result.push({"removeSeat": i});
     }
 
-    //
+    //if it is this seats turn send the input state change command
     else if (i >= 0 && this.seats[i].is_turn)
       result.push({"pushState": this.state_map["input"].name});
+
+    //remind the client that it is not their turn
     else
       result.push({"pushState": this.state_map["wait"].name});
 
     return result;
   },
+
+
+
   /* cleanSeats: remove seats to prepare for the next in line
    *  */
   cleanSeats : function () {
@@ -108,17 +136,32 @@ GameSrv = s.Game.extend({
         //this.removeSeat(i);
     }
   },
+
+
+  /* stateCheck: every game tick check if we can remove a seat
+   * */
   stateCheck : function () {
     this.cleanSeats();
   },
+
+
+  /* run: wrapper for starting the main game loop
+   * */
   run : function () {
     this.main(this);
-    //this.step = function (cb) {setTimeout(cb,s.FREQ);}
-    //this.step(this.update);
   },
+
+
+  /* stop: wrapper for stopping the main game loop
+   *  */
   stop : function () {
     this.step = function () {};
   },
+
+
+
+  /* getComms: return a subset of the games event_list
+   * with no arguments passed in will return the entire event_list */
   getComms : function (s,e) {
     if (!this.event_list.forEach) return "";
     if (!s) s = 0;
@@ -129,29 +172,41 @@ GameSrv = s.Game.extend({
     this.event_list.slice(s,e).forEach(function (v){
 
       i++;
-      //v.I = i;
-      //result_arr.push(v);
       var t = JSON.parse(v);
       t.I = i;
       result_arr.push(t);
+
     });
 
     return result_arr;
   },
+
+
+
+  /* putComms:
+   * */
   putComms : function (obj,comm) {
     var val = {};
     if (comm) val = {comm:obj};
     else val = obj;
     this.comm.msg_in.push(val);
-    //val.I = this.event_list.length-1;
     this.event_list.push(JSON.stringify(val));
-    //this.event_list.push(val);
   },
+
+
+
+  /* cb: fires the call back for the servers Comm object
+   * */
   e: new EventEmitter(),
-  cb : function (e) {//console.log(e);
+  cb : function (e) {
     this.e.emit('comm',e);
   }
+
+
+
 });
+
+
 
 GameBucket = function (ss){
   this.session_store = ss;
@@ -163,6 +218,8 @@ GameBucket = function (ss){
   }
   this.e = new EventEmitter();
 }
+
+
 
 GameBucket.prototype.cull = function () {
   var ss = this.session_store.sessions || {};
@@ -183,11 +240,14 @@ GameBucket.prototype.cull = function () {
   }
 }
 
+
+
 GameBucket.prototype.newGame=function (g){
   var g = new GameSrv();
   g.create();
   g.event_list=[];
-  g.comm.cb = function (v) {s.game.event_list.push(JSON.stringify(v));}
+  //g.comm.cb = function (v) {s.game.event_list.push(JSON.stringify(v));}
+  g.comm.cb = function (v) {this.event_list.push(JSON.stringify(v));console.log("asdf");}
   g.run();
   this.games.push(g);
   this.e.emit('newGame',this.games.length - 1);
@@ -195,8 +255,8 @@ GameBucket.prototype.newGame=function (g){
 }
 
 GameBucket.prototype.findGame=function () {
-  for (var e = 0; e < gb.games.length; e++) {
-    if (gb.games[e].seats.length < gb.games[e].max_seat)
+  for (var e = 0; e < this.games.length; e++) {
+    if (this.games[e].seats.length < this.games[e].max_seat)
       return e;
   }
   return -1
@@ -254,7 +314,7 @@ findGame = function(req,res,next) {
   if (typeof req.session.gb_index === 'undefined'||
       typeof gb.games[req.session.gb_index] === 'undefined')
   {
-    res.send(400);
+    res.sendStatus(400);
     return;
   } else {
     g = gb.games[req.session.gb_index];
@@ -271,7 +331,7 @@ findGame = function(req,res,next) {
 
   var seat = g.seats[g.getSeatIndexById(req.sessionID)];
   if (!seat) {
-    res.send(400);
+    res.sendStatus(400);
     return;
   }
 
@@ -309,10 +369,12 @@ server.get(/.*\/hello$/,function (req,res){
     b.id = rid;
     b.type = "player";
     var t_seat = g.fillSeat(b);
-    var team = g.seats[t_seat].team; //FIXME: sometimes this fails
+    var team = g.seats[t_seat].team
     var ship = gb.genShip(team);
     g.putComms({"addEnt":ship});
-    g.stepTurn();
+
+    //FIXME:
+    //g.stepTurn();
 
     logger.log(util.format("client hello - session: %s game: %s seat: %s",
       req.sessionID,req.session.gb_index, t_seat));
@@ -345,6 +407,9 @@ server.get(/\/\d+\/\d+$/,findGame,function (req,res){
     var re = [];
     re = re.concat(g.getComms(result[1]));
     re = re.concat(g.getTurn(req.sessionID));
+
+    re = re.concat(g.getSeats("id",req.sessionID,"updateSeat"));
+
     if (result[1] != g.event_list.length)
       re = re.concat([{"setCommI":g.event_list.length}]);
     res.json(re);
@@ -355,6 +420,7 @@ server.get(/\/\d+\/\d+$/,findGame,function (req,res){
   if (req.seat.is_turn ||
      result[1] < g.event_list.length ||
      parseInt(result[0]) != g.cur_state) h_go();
+
   //wait to form response until something has happened
   else g.e.once('comm',h_go);
 
@@ -385,11 +451,13 @@ server.post("*",findGame,function (req,res){
   }
 
   g.putComms(req.body);
-  g.stepTurn();
+  //g.stepTurn();
+  g.stepMove();
 
   re = [];
   re = re.concat({"setCommI":g.event_list.length});
   re = re.concat(g.getTurn(req.sessionID));
+  re = re.concat(g.getSeats("id",req.sessionID,"updateSeat"));
   res.json(re);
 
 });

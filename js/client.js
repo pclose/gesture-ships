@@ -1,18 +1,22 @@
 //vim ts=2 sw=2
 var CANVAS_ID="game_canvas_01";
+var UI_ID="ui_canvas_01";
 var CLICK_BOUND = 1;
+var UI_TEXT_SCALE = 12;
+var UI_MOBILE_TEXT_SCALE = 4;
+BORDER_STYLE = "1px solid black";
 IS_SERVER=false;
 
 
 
 /*GameClient
- *extends the Game object to make it do things like render to an html canvas
- */
+ *extends the Game object to make it do things like render to an html canvas */
 GameClient = Game.extend({
 
 last_update : null,
 has_to_draw : true,
 moved : false,
+ui_text_scale : UI_TEXT_SCALE,
 
 /* createClient:
  * */
@@ -22,7 +26,11 @@ createClient : function () {
   this.create();
 
   //static css stuff. why is this here?
-  setupCSS()
+  setupCSS();
+
+  //detect browser type
+  this.mobile = isMobile();
+  if (this.mobile) this.ui_text_scale *= UI_MOBILE_TEXT_SCALE;
 
   //preload some assets
   this.fireUpCache();
@@ -56,7 +64,7 @@ createClient : function () {
   //html tags
   var body = document.getElementById('body');
   this.canvas = document.createElement('canvas');
-  this.canvas.style.border="1px dashed black";
+  this.canvas.style.border=BORDER_STYLE;
   this.canvas.setAttribute("tabindex",'0');
   this.canvas.setAttribute("id",CANVAS_ID);
   //this.canvas.setAttribute("style" , cssify({ "background-image" : 'url("img/lined-paper.gif")'}));
@@ -68,10 +76,14 @@ createClient : function () {
 
   //UI .. more html content
   this.ui = new UI();
-  this.ui.create();
+  this.ui.create(this);
 
   //create game_bar
   this.ui.createGameBar("state","connected","up","down","move","fire")
+
+  //modify the status bar a bit
+  this.ui.game_bar["state"].style.fontSize = "50px";
+  this.ui.game_bar["state"].innerHTML = "0";
 
   //create game_bar functions
   this.ui.game_bar["up"].onclick = this.uiArrowClick.bind(this,1);
@@ -85,6 +97,8 @@ createClient : function () {
   //modify the game bar to add arrows
   this.ui.game_bar["up"].innerHTML = '<img src = "img/point.gif"></img>';
   this.ui.game_bar["down"].innerHTML = '<img class = "flip-vertical" src = "img/point.gif"></img>'
+
+  this.ev.orientCanvas.call(this,true);
 
   //other important stuff
   this.canvas_offset = {x : this.canvas.offsetLeft,y : this.canvas.offsetTop};
@@ -170,6 +184,9 @@ drawPhy : function(i,c,cw,ch) {
  * separate from main game loop */
 updateClient : function() {
 
+  //uncomment to always comm server regardless of input
+  //this.moved = true;
+
   if (this.has_to_draw || !this.pollMotion())
     this.drawAll();
 
@@ -187,7 +204,7 @@ updateClient : function() {
     this.moved = false;
     this.last_update = now;
 
-  } else if(now - this.last_update > this.must_poll) {
+  } else if (now - this.last_update > this.must_poll) {
     this.moved = true;
   }
 
@@ -243,7 +260,7 @@ stop : function () {
  * TODO: compensate for the size of the device via pixels
  * TODO: recognize and/or normalize path for gestures */
 finishDrag : function (path) {
-
+  
   if (!path.length) return;
 
   this._drag_inp = false;
@@ -282,27 +299,26 @@ finishDrag : function (path) {
   ctx.strokeStyle = "rgb(0,0,255)";
   ctx.beginPath();
 
-    ctx.moveTo(path[0].x - ofs.x, path[0].y - ofs.y);
+  ctx.moveTo(path[0].x - ofs.x, path[0].y - ofs.y);
 
-    for (var i=1;i<path.length;i++) {
+  for (var i=1;i<path.length;i++) {
 
-      var a = path[i],
-          b = path[i-1];
+    var a = path[i],
+        b = path[i-1];
 
-      ctx.lineTo(a.x - ofs.x, b.y - ofs.y);
+    ctx.lineTo(a.x - ofs.x, b.y - ofs.y);
 
-      //dist += Math.sqrt(Math.pow((b.x - a.x),2) + Math.pow((b.y - a.y),2));
-      dist += Math.pow((b.x - a.x),2) + Math.pow((b.y - a.y),2);
+    //dist += Math.sqrt(Math.pow((b.x - a.x),2) + Math.pow((b.y - a.y),2));
+    dist += Math.pow((b.x - a.x),2) + Math.pow((b.y - a.y),2);
 
-    }
+  }
 
-    ctx.stroke();
+  ctx.stroke();
 
-    this.drag_vec = {
-      force : Math.round( dist / time ),
-      end : end
-    };
-
+  this.drag_vec = {
+    force : Math.round( dist / time ),
+    end : end
+  };
 
 },
 
@@ -313,7 +329,7 @@ finishDrag : function (path) {
 stateCheck : function () {
 
   //update ui status bar
-  this.ui.update("state",this.cur_state.name);
+  this.ui.update("state",this.cur_state.name,this.seats[0]);
 
   //triggered by command input
   if (this.uiInputPoll()) {
@@ -344,6 +360,7 @@ stateCheck : function () {
 
   //triggered by a saved command
   if (this.cur_state.id > 0 && this.command) {
+    //while(!this.pollMotion()) {console.log("hi");}
     this.sendCommand();
   }
 
@@ -499,7 +516,9 @@ checkCommand : function (val) {
 
   //override queued command
   var comm = val || this.queued_command;
-
+    
+  if (!comm) {console.log("nota real command");return;}
+  
   //exit early if it doesn't map to a function on the game object
   if (!comm.fn || typeof this[comm.fn] != "function") {
     //console.log("no mapped function for " + comm.fn);
@@ -694,11 +713,12 @@ GameClient.prototype.loadImg = function (value) {
   if (this.img_cache.hasOwnProperty(value)) {
     return this.img_cache[value];
   }
-
+  
   //add value to cache
   var img;
   img = new Image();
   img.src = value;
+  if (value) this.total_req++;
   g = this;
   img.onload = function () {g.total_loaded++};
   this.img_cache[value] = img;
@@ -707,23 +727,31 @@ GameClient.prototype.loadImg = function (value) {
 
 }
 
-GameClient.prototype.fireUpCache = function() {
+GameClient.prototype.fireUpCache = function(values) {
 
-  var s = ["img/ship_a_body0.png", "img/ship_missle.png", "img/ship_b_body0.png", "img/blue.gif"];
+  var values = values ? values :[
+    "img/ship_a_body0.png",
+    "img/ship_missle.png",
+    "img/ship_b_body0.png",
+    "img/blue.gif",
+    "img/point.gif"
+  ];
+
   this.total_loaded=0;
+  this.total_req=0;
 
-  for (var i=0;i<s.length;i++)
-    this.loadImg(s[i]);
+  for (var i=0;i<values.length;i++)
+    this.loadImg(values[i]);
 
   g=this;
 
   this.cache_interval = window.setInterval(
     function () {
-      if (g.total_loaded >= s.length) {
+      if (g.total_loaded >= values.length) {
         window.clearInterval(g.cache_interval);
         g.has_to_draw=true;
       }
-    }, 500
+    }, CACHE_INTERVAL
   );
 
 
@@ -785,6 +813,14 @@ var setupCSS = function () {
 
 }
 
-
+/* isMobile: 
+ * */
+function isMobile() {
+  if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
 //var c = game.canvas.getContext("2d");game.physics.tester(c);game.tester=true;

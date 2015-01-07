@@ -402,7 +402,7 @@ GameClient.prototype.uiDrawSelect = function(ent) {
  * */
 GameClient.prototype.uiConfirmFireMissle = function() {
 
-  if (!!this.ent_toggled) return;
+  if (!this.ent_toggled) return;
 
   if (this.ent_toggled.getMissleId() < 0) {
     return false;
@@ -465,8 +465,8 @@ UI = Class.extend({
       "z-index": "1" ,
       "left" : template.sw + "px" ,
       "top" : template.sh + "px" ,
-      "width" : template.sw + "px" ,
-      "height" : template.sh + "px" ,
+      //"width" : template.sw + "px" ,
+      //"height" : template.sh + "px" ,
       "display" : "none" ,
     };
 
@@ -515,7 +515,7 @@ UI = Class.extend({
       this.game_bar[c.innerHTML]= c;
     }
     s.style.width = canv.width+"px";
-    s.style.height = template.sh*2+"px";
+    //s.style.height = template.sh*2+"px";
 
     canv.parentNode.insertBefore(p,canv.nextSibling);
     p.appendChild(this.game_bar.s);
@@ -525,10 +525,11 @@ UI = Class.extend({
   },
   /* UI.update: should receive events from other objects
    * */
-  update : function (op,data){
+  update : function (op,data,seat){
     if (op == "state") {
-      this.game_bar["state"].innerHTML = data
+      if (seat) this.game_bar["state"].innerHTML = ""+seat.moves;
       this.game_bar["state"].style.background = ""+this.state_color[data];
+
     } else if (op == "conn") {
       this.game_bar["connected"].innerHTML = "conn:<br/>"+!data;
       this.game_bar["connected"].style.background = data ?

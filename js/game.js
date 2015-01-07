@@ -1,56 +1,65 @@
 /* vim ts=2 sw=2
 */
 
-var b2Vec2 = Box2D.Common.Math.b2Vec2,
- b2BodyDef = Box2D.Dynamics.b2BodyDef,
- b2Body = Box2D.Dynamics.b2Body,
- b2FixtureDef = Box2D.Dynamics.b2FixtureDef,
- b2Fixture = Box2D.Dynamics.b2Fixture,
- b2World = Box2D.Dynamics.b2World,
- b2MassData = Box2D.Collision.Shapes.b2MassData,
- b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape,
- b2CircleShape = Box2D.Collision.Shapes.b2CircleShape,
- b2DebugDraw = Box2D.Dynamics.b2DebugDraw,
- b2FilterData = Box2D.Dynamics.b2FilterData,
- b2ContactListener = Box2D.Dynamics.b2ContactListener,
- b2AABB =  Box2D.Collision.b2AABB,
- b2WorldManifold = Box2D.Collision.b2WorldManifold,
- b2Transform = Box2D.Common.Math.b2Transform,
- b2Mat22 = Box2D.Common.Math.b2Mat22,
+//shorthand box2d stuff
+var b2Vec2 = Box2D.Common.Math.b2Vec2;
+var b2BodyDef = Box2D.Dynamics.b2BodyDef;
+var b2Body = Box2D.Dynamics.b2Body;
+var b2FixtureDef = Box2D.Dynamics.b2FixtureDef;
+var b2Fixture = Box2D.Dynamics.b2Fixture;
+var b2World = Box2D.Dynamics.b2World;
+var b2MassData = Box2D.Collision.Shapes.b2MassData;
+var b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape;
+var b2CircleShape = Box2D.Collision.Shapes.b2CircleShape;
+var b2DebugDraw = Box2D.Dynamics.b2DebugDraw;
+var b2FilterData = Box2D.Dynamics.b2FilterData;
+var b2ContactListener = Box2D.Dynamics.b2ContactListener;
+var b2AABB =  Box2D.Collision.b2AABB;
+var b2WorldManifold = Box2D.Collision.b2WorldManifold;
+var b2Transform = Box2D.Common.Math.b2Transform;
+var b2Mat22 = Box2D.Common.Math.b2Mat22;
 
- TWOPI = Math.PI * 2, PIOTWO = Math.PI / 2,
- QTRPI = Math.PI * 0.25, THREEQTRPI = Math.PI * 0.75,
- _DENSITY = 1.0, _FRICTION = 0.5, _RESTITUTION = 0.2,
- MAX_SEAT = 2, MAX_TEAM_SIZE = 2,
- POLL = 6000,MUST_POLL = 60000,
- FREQ = 1000/60,
- MOVE_FORCE_MULT = 50,
- MOVE_DAMP_BASE = 1,
- UPDATE_INTERVAL = 1,
- MOVE_MAX_LENGTH = 2,
- CLICK_MAX_LENGTH = 1,
- STATE_MAX_LENGTH = 1,
- MOTION_LIM_TEST = 0.1,
- INCR = 50,
- ENT_HEALTH_INCR = 1,
- PHY_OFS = 20, PHY_SCALE = 50, PHY_BASE = 2,
- PROJ_WIDTH_OFS = 0.2, PROJ_DENSITY_OFS = 0.01,
- COLLISION_CATEGORY = {
+//lotsa constants
+var TWOPI = Math.PI * 2; var PIOTWO = Math.PI / 2;
+var QTRPI = Math.PI * 0.25; var THREEQTRPI = Math.PI * 0.75;
+var _DENSITY = 1.0; var _FRICTION = 0.5; var _RESTITUTION = 0.2;
+var MAX_SEAT = 2; var MAX_TEAM_SIZE = 2;
+var POLL = 6000; var MUST_POLL = 60000;
+var FREQ = 1000/60;
+var MOVE_FORCE_MULT = 50;
+var MOVE_DAMP_BASE = 1;
+var UPDATE_INTERVAL = 1;
+var MOVE_MAX_LENGTH = 2;
+var CLICK_MAX_LENGTH = 1;
+var STATE_MAX_LENGTH = 1;
+var MOTION_LIM_TEST = 0.1;
+var INCR = 50;
+var ENT_HEALTH_INCR = 1;
+var PHY_OFS = 20; var PHY_SCALE = 50; var PHY_BASE = 2;
+var PROJ_WIDTH_OFS = 0.2; var PROJ_DENSITY_OFS = 0.01;
+var DEFAULT_GAME_WIDTH = 600;
+var DEFAULT_GAME_HEIGHT = 600;
+var DEFAULT_STARTING_MOVES = 2;
+var GAME_BAR_RATIO = 0.15;
+var CACHE_INTERVAL = 500;
+var ICON_BUFF = 10;
+
+var COLLISION_CATEGORY = {
   'player' : 0x0001,
   'projectile' : 0x0001 << 1,
   'all' : 0xFFFF
-},
- ENT_TYPES = {
+}
+var ENT_TYPES = {
   'player' : 0,
   'projectile' : 1
-},
- ENT_HEALTH = {
+}
+var ENT_HEALTH = {
   'init' : 1,
   'ship' : 5,
   'missle' : 3,
   'laser' : 1
-},
- SHIP_SYNC_ATTR = [
+}
+var SHIP_SYNC_ATTR = [
  'name','x','y',
  'drag','h','w',
  'sh','sw','angle','team','id',
@@ -62,7 +71,8 @@ Seat = Class.extend({
   type : "player",
   id : null,
   team : 0,
-  is_turn : false
+  is_turn : false,
+  moves : 0
 });
 
 
@@ -156,8 +166,10 @@ Game = Class.extend({
     this.now = new Date().getTime();
 
     //TODO: make size dynamic or scrolling
-    if (settings && (!settings.x||!settings.y)) this.gsize = {w : 600, h : 600};
-    else this.gsize = {w : 600, h : 600};
+    if (settings && (!settings.x||!settings.y))
+      this.gsize = {w : DEFAULT_GAME_WIDTH, h : DEFAULT_GAME_HEIGHT};
+    else
+      this.gsize = {w : DEFAULT_GAME_WIDTH, h : DEFAULT_GAME_HEIGHT};
 
     //this.pX=(this.gsize.w+this.physics_scale)/this.physics_offset;
     //this.pY=(this.gsize.h+this.physics_scale)/this.physics_offset;
@@ -375,7 +387,7 @@ Game = Class.extend({
 
   /* fillSeat: (ie add player)
    * assigns the seat to the next team based on size of game*/
-  fillSeat : function (seat){
+  fillSeat : function (seat) {
 
     var count = 0,
       team_size = this.max_team_size,
@@ -409,6 +421,20 @@ Game = Class.extend({
     }
 
     this.seats.push(seat);
+
+    if (IS_SERVER) {
+      var do_set_turn = true;
+      for (var i=0; i<this.seats.length; i++) {
+        if (this.seats[i].is_turn) do_set_turn = false;
+      }
+      seat.moves = 0;
+      if (do_set_turn) {
+        this.turn = this.seats.length;
+        seat.is_turn = true;
+        seat.moves = DEFAULT_STARTING_MOVES;
+      }
+    }
+
     return this.getSeatIndexById(seat.id);
 
   },
@@ -438,11 +464,44 @@ Game = Class.extend({
   /* stepTurn: essentially just increments the seat by 1
    * TODO: add sorting function to fillSeat to make this accurate*/
   stepTurn : function () {
+
     this.turn = ++this.turn <= this.seats.length ? this.turn : 1;
-    for (var i=0;i<this.seats.length;i++)
+
+    for (var i=0;i<this.seats.length;i++) {
       this.seats[i].is_turn=false;
-    if (this.turn-1 >= 0)
+      this.seats[i].moves = 0;
+    }
+
+    if (this.turn-1 >= 0) {
       this.seats[this.turn-1].is_turn=true;
+      this.seats[this.turn-1].moves = DEFAULT_STARTING_MOVES;
+    }
+
+  },
+
+
+
+  /* stepMove: called when a client sends a move
+   * */
+  stepMove : function (count) {
+    
+    var count = typeof count=="undefined" ? 1: count
+    this.seats[this.turn-1].moves -= count;
+    if (this.seats[this.turn-1].moves <= 0) {
+      this.stepTurn();
+    }
+
+  },
+
+
+
+  /* updateSeat: updates the specified seat
+   * */
+  updateSeat: function (seat) {
+    if (!seat || !seat.id) return;
+    var seati = this.getSeatIndexById(seat.id);
+    if (seati < 0) return;
+    this.seats[seati] = seat;
   },
 
 
@@ -490,7 +549,7 @@ Game = Class.extend({
 
 
 
-  /* stepState: override on client side
+  /* stepState: override on server side
    * */
   stepState : function() {return;},
 
