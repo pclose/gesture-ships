@@ -69,6 +69,9 @@ createClient : function () {
   this.canvas.setAttribute("id",CANVAS_ID);
   //this.canvas.setAttribute("style" , cssify({ "background-image" : 'url("img/lined-paper.gif")'}));
   //this.canvas.setAttribute("style" , cssify({ "background-image" : 'url("img/graph-tile.png")'}));
+  //this.canvas.setAttribute("style" , cssify({ "background-image" : 'url("img/graph-tile-trans.png")'}));
+  //document.body.setAttribute("style", cssify({"background-image" : 'url("img/space.jpg")'}));
+
 
   this.ev.orientCanvas.call(this);
 
@@ -81,22 +84,8 @@ createClient : function () {
   //create game_bar
   this.ui.createGameBar("state","connected","up","down","move","fire")
 
-  //modify the status bar a bit
-  this.ui.game_bar["state"].style.fontSize = "50px";
-  this.ui.game_bar["state"].innerHTML = "0";
-
-  //create game_bar functions
-  this.ui.game_bar["up"].onclick = this.uiArrowClick.bind(this,1);
-  this.ui.game_bar["down"].onclick = this.uiArrowClick.bind(this,-1);
-
-  //hardcode the interface objects
-  this.UI_ONE = this.ui.game_bar["move"];
-  this.UI_TWO = this.ui.game_bar["fire"];
   this.uiSetSelector();
-
-  //modify the game bar to add arrows
-  this.ui.game_bar["up"].innerHTML = '<img src = "img/point.gif"></img>';
-  this.ui.game_bar["down"].innerHTML = '<img class = "flip-vertical" src = "img/point.gif"></img>'
+  this.ui.setupInit();
 
   this.ev.orientCanvas.call(this,true);
 
@@ -187,8 +176,10 @@ updateClient : function() {
   //uncomment to always comm server regardless of input
   //this.moved = true;
 
-  if (this.has_to_draw || !this.pollMotion())
+  if (this.has_to_draw || !this.pollMotion()){
     this.drawAll();
+    this.ui.drawAll();
+  }
 
   var now = this.now;
   this.now = new Date().getTime();
@@ -331,16 +322,6 @@ stateCheck : function () {
   //update ui status bar
   this.ui.update("state",this.cur_state.name,this.seats[0]);
 
-  //triggered by command input
-  if (this.uiInputPoll()) {
-    this.procInputCommand();
-  }
-
-  //triggered if arrow input queue needs to be read
-  if (this._arrow_inp && !!this.queued_command ) {
-    this[this.queued_command.click_fn]();
-  }
-
   //triggered by a swipe
   if (this.drag_vec) {
 
@@ -351,7 +332,6 @@ stateCheck : function () {
         this.drag_vec,
         this.ent_toggled
       );
-
     //unset globals
     this.queued_command = null;
     this.drag_vec = null;
@@ -382,89 +362,6 @@ stepState : function() {
 
 
 
-queued_command : null,
-/* procInputCommand: process ui commands
- * */
-procInputCommand : function () {
-
-  var comm;
-
-  //go backwards through ui_history and find an element with a function(fn)
-  for (var i=this.ui_history.length-1; i>=0; i--){
-    if (this.ui_history[i].fn) {
-      comm = this.ui_history[i].fn;
-      break;
-    }
-  }
-
-  //unset global input history
-  this.ui_history=[];
-  //unset drag vector
-  this.drag_vec=null;
-
-  //exit early and reset ui if it doesn't have an input type or function
-  if (!comm || !comm.input_type || !this.checkCommand(comm)) {
-    this.uiSetSelector();
-    return;
-  }
-
-  //trigger drag input
-  if (comm.input_type == "swipe") {
-    if (!this.uiSelectTeam()) return;
-
-
-    //test if we can exit early for some reason.. eg no missle left
-    if (this.checkCommand({fn:comm.confirm_fn}) && !this[comm.confirm_fn]()) {
-
-      this.command = null;
-      comm = null;
-      this.has_to_draw = true;
-      this.uiSetSelector();
-
-    //get ready for drag input
-    } else {
-      this._drag_inp = true;
-    }
-
-
-  //trigger arrow click switch
-  } else if (comm.input_type == "arrow") {
-    if (!this.uiSelectTeam()) return;
-    if (!this.checkCommand({fn:comm.click_fn})) return;
-    this.arrow_queue = [];
-    this._arrow_inp = true;
-    this._arrow_inp_triggered = false;
-
-  //trigger display function
-  } else if (comm.input_type == "display") {
-    //TODO
-
-  //cancel button click
-  } else if (comm.input_type == "cancel") {
-    if (!this.checkCommand({fn:this.queued_command.cancel_fn})) return;
-    this[this.queued_command.cancel_fn]();
-    this.command = null;
-    comm = null;
-    this.ent_toggled = null;
-    this.t_ent = null;
-    this.uiSetSelector();
-
-  //confirm button click
-  } else if (comm.input_type == "confirm") {
-    if (!this.checkCommand({fn:this.queued_command.confirm_fn})) return;
-    this[this.queued_command.confirm_fn]();
-    comm = this.queued_command;
-    this.uiSetSelector();
-
-  }
-
-  //save command globally
-  this.queued_command=comm;
-
-},
-
-
-
 /* sendCommand: sends a command back to the game and resets global ready flag
  * */
 sendCommand : function (comm) {
@@ -491,13 +388,13 @@ genSwipeCommand : function (q_comm,d_vec,ent) {
 
   //override queued command
   var comm = q_comm;
-
+  
   //exit early if comm doesn't map to a function on the game object
   if (!this.checkCommand(comm)) return null;
 
   //create swipe command result
   var result = {};
-  result[comm.fn] = {
+  result[comm.game_fn] = {
     x:d_vec.end.x,
     y:d_vec.end.y,
     id:ent.id,
@@ -520,7 +417,7 @@ checkCommand : function (val) {
   if (!comm) {console.log("nota real command");return;}
   
   //exit early if it doesn't map to a function on the game object
-  if (!comm.fn || typeof this[comm.fn] != "function") {
+  if (!comm.game_fn || typeof this[comm.game_fn] != "function") {
     //console.log("no mapped function for " + comm.fn);
     return false;
   }

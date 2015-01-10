@@ -36,6 +36,12 @@ EvListener = Class.extend({//TODO: use input library for cross platform
 
     }
 
+    //add a click for game_bar
+    if (v.target.id == UI_ID) {
+      this.ui.goClick(getCords(this,v));
+    }
+
+
     this.finishDrag(this.move_arr);
 
   },
@@ -69,12 +75,15 @@ EvListener = Class.extend({//TODO: use input library for cross platform
     this.canvas.getContext('2d').scale(this.draw_scale.x,this.draw_scale.y);
 
     if (is_during_game) {
-      this.drawAll();
+      
+      this.drawAll();                                      
       var game_bar_height = this.abs_size * GAME_BAR_RATIO;
-      this.ui.game_bar.div.style.width = this.canvas.width + "px";
-      this.ui.game_bar.s.style.width = this.canvas.width + "px";
-      this.ui.game_bar.div.style.height = game_bar_height + "px";
-      this.ui.game_bar.s.style.height = game_bar_height  + "px";
+                                                           
+      this.ui.canvas.width = this.abs_size;                
+      this.ui.canvas.height = game_bar_height;             
+                                                           
+      this.ui.drawAll();                                   
+ 
     }
 
 

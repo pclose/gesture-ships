@@ -1,0 +1,151 @@
+
+
+
+<html>
+<head>
+<script src="../js/Box2dWeb-2.1.a.3.js"></script>
+</head>
+<body>
+</body>
+</html>
+
+<script>
+  
+  var b2Vec2 = Box2D.Common.Math.b2Vec2,                                          
+   b2BodyDef = Box2D.Dynamics.b2BodyDef,                                          
+   b2Body = Box2D.Dynamics.b2Body,                                                
+   b2FixtureDef = Box2D.Dynamics.b2FixtureDef,                                    
+   b2Fixture = Box2D.Dynamics.b2Fixture,                                          
+   b2World = Box2D.Dynamics.b2World,                                              
+   b2MassData = Box2D.Collision.Shapes.b2MassData,                                
+   b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape,                        
+   b2CircleShape = Box2D.Collision.Shapes.b2CircleShape,                          
+   b2DebugDraw = Box2D.Dynamics.b2DebugDraw,                                      
+   b2FilterData = Box2D.Dynamics.b2FilterData,                                    
+   b2ContactListener = Box2D.Dynamics.b2ContactListener,                          
+   b2Transform = Box2D.Common.Math.b2Transform,                                   
+   b2Mat22 = Box2D.Common.Math.b2Mat22
+  ;
+
+
+function mov(canvas) {
+  this.mov_arr = [];
+  this.c = canvas;
+  this.w = 0;
+
+  this.interval = setInterval(this.tick.bind(this),16);
+
+
+  //this.world = new b2World(b2Vec2(10,10),true);
+  this.world = new b2World(b2Vec2(0,0),true);
+  this.step = 1/60;
+  this.tester(this.c.getContext('2d'));
+
+  this.b = this.addBody({x:1,y:1,type:"dynamic",
+    density:1,friction:1,restitution:1,width:1,height:1});
+  
+}
+
+mov.prototype.move = function (v) {
+  if (this._yes){
+    this.mov_arr.push({x:v.x,y:v.y});
+  }
+}
+mov.prototype.mDown = function (v) {
+  this._yes=true;
+  this.mov_arr = [];
+  this.s = this.w;
+}
+mov.prototype.mUp = function (v) {
+  this._yes=false;
+  this.e = this.w;
+  this.dEnd(this.mov_arr);
+}
+mov.prototype.dEnd = function(v) {
+  
+  if (!this.mov_arr.length) return;
+
+  var ofs = {x : this.c.offsetLeft,y : this.c.offsetTop},
+    cw = this.c.width, 
+    ch = this.c.height,
+    ctx = this.c.getContext("2d"),
+    ma = this.mov_arr,
+    dist = 0,
+    time = this.e - this.s
+  ;
+  
+  ctx.clearRect(0,0,cw,ch);
+  ctx.strokeStyle = "rgb(0,0,255)";
+  ctx.beginPath();
+  
+  ctx.moveTo(ma[0].x - ofs.x, ma[0].y - ofs.y);
+  for (var i=1;i<ma.length;i++) {
+    var a = ma[i],b = ma[i-1];
+    ctx.lineTo(a.x - ofs.x, b.y - ofs.y);
+    dist += Math.sqrt((b.x * a.x) + (b.y * a.y));
+  }
+  dist = Math.round(dist);
+  ctx.stroke();
+}
+mov.prototype.tick = function() {
+  this.w ++;
+  this.world.Step(this.step, 10 , 10);                                                 
+  this.world.DrawDebugData();                                                          
+  this.world.ClearForces();
+}
+mov.prototype.tester = function (c) {
+  this.d = new b2DebugDraw();
+  this.d.SetSprite(c);
+  this.d.SetDrawScale(20.0);
+  this.d.SetFillAlpha(0.5);
+  this.d.SetLineThickness(1.0);
+  this.d.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
+  this.world.SetDebugDraw(this.d);
+  this.world.DrawDebugData();
+},
+mov.prototype.addBody = function (settings) {
+  // real simple like.. just polygons for now
+  var gBody = new b2BodyDef();
+  if (settings.phy_type == "static")
+    gBody.type = b2Body.b2_staticBody;
+  else if (settings.phy_type == "dynamic")
+    gBody.type = b2Body.b2_dynamicBody;
+  gBody.position.Set(settings.x,settings.y);
+  gBody.angle = settings.angle;
+  var fixt = new b2FixtureDef();
+
+  fixt.density = settings.density;
+  fixt.friction = settings.friction;
+  fixt.restitution = settings.restitution;
+  fixt.shape = new b2PolygonShape;
+  fixt.shape.SetAsBox(settings.w,settings.h);
+
+  fixt.filter.categoryBits = settings.collision_category;
+  fixt.filter.maskBits = settings.collision_mask;
+  //fixt.filter.groupIndex = settings.collision_group;
+
+  body = this.world.CreateBody(gBody);
+  body.CreateFixture(fixt);
+
+  return body;
+}
+
+
+var c=document.createElement('canvas');
+document.getElementsByTagName('body')[0].appendChild(c);
+c.setAttribute('style','border: 1px dashed black;');
+c.setAttribute('width',600);
+c.setAttribute('height',600);
+var obj = new mov(c);
+
+c.addEventListener('mousemove',obj.move.bind(obj));
+c.addEventListener('mousedown',obj.mDown.bind(obj));
+c.addEventListener('mouseup',obj.mUp.bind(obj));
+
+c.addEventListener('touchmove',obj.move.bind(obj));
+c.addEventListener('touchstart',obj.mDown.bind(obj));
+c.addEventListener('touchend',obj.mUp.bind(obj));
+
+</script>
+
+

@@ -20,83 +20,9 @@ var UI_FUNCTION_MAP = {
   "cancel":{id:5,fn:"cancel",name:"cancel",input_type:"cancel"},
   "confirm":{id:6,fn:"confirm",name:"confirm",input_type:"confirm"}
 }
-GameClient.prototype.cancel = function () {};
-GameClient.prototype.confirm = function () {};
-var UI_DEFAULT = {
-  "name": "start",
-  "children": ["select","a ship"]
-}
-var
-ICON_MOVE=createIcon('<img src="img/icon_move.png"></img><br />move'),
-ICON_FIRE=createIcon('<img src="img/icon_fire.png"></img><br />fire'),
-ICON_SHIP=createIcon('<img src="img/icon_ship.png"></img><br />move ship'),
-ICON_SHIELD=createIcon('<img src="img/icon_shield.png"></img><br />move shield'),
-ICON_LASER=createIcon('<img src="img/icon_laser.png"></img><br />fire laser'),
-ICON_MISSLE=createIcon('<img src="img/icon_missle.png"></img><br />fire missle'),
-ICON_CANCEL=createIcon('<img src="img/icon_cancel.png"></img><br />cancel'),
-ICON_CONFIRM=createIcon('<img src="img/icon_confirm.png"></img><br />confirm')
 
-var UI_SHIP_PLAYER = {
-  "name": "start",
-  "children": [
-    {
-    "name":"move",
-    "content":ICON_MOVE,
-    "children":
-      [{
-        "name": "ship",
-        "content":ICON_SHIP,
-        "fn":UI_FUNCTION_MAP["ship"],
-        "children":
-        [
-          {"name":"cancel","content":ICON_CANCEL},
-          {"name":"confirm","children":["SWIPE!",""],"input_ready":true,"content":ICON_CONFIRM}
-        ],
-      },
-      {
-        "name":"shield",
-        "fn":UI_FUNCTION_MAP["shield"],
-        "input_ready":true,
-        "content":ICON_SHIELD,
-        "children":
-        [
-          {"name":"cancel","input_ready":true,"fn":UI_FUNCTION_MAP["cancel"],"content":ICON_CANCEL},
-          {"name":"confirm","input_ready":true,"fn":UI_FUNCTION_MAP["confirm"],"content":ICON_CONFIRM}
-        ],
-      }]
-    },
-    {
-      "name":"fire",
-      "content":ICON_FIRE,
-      "children":
-      [{
-        "name": "laser",
-        "content":ICON_LASER,
-        "children":
-        [
-          {"name":"cancel","content":ICON_CANCEL},
-          {"name":"confirm","children":["SWIPE!",""],"input_ready":true,"content":ICON_CONFIRM}
-        ],
-        "fn":UI_FUNCTION_MAP["laser"]
-      },
-      {
-        "name":"missle",
-        "content":ICON_MISSLE,
-        "children":
-        [
-          {"name":"cancel","content":ICON_CANCEL},
-          //{"name":"confirm","input_ready":true,"fn":UI_FUNCTION_MAP["confirm"],"content":ICON_CONFIRM,"children":["SWIPE!",""]}
-          {"name":"confirm","children":["SWIPE!",""],"input_ready":true,"content":ICON_CONFIRM}
-        ],
-        "fn":UI_FUNCTION_MAP["missle"]
-      }]
-    }
-  ]
-}
-var UI_SHIP_ENEMY = {
-  "name": "start",
-  "children": [{"name":"info","input_ready":true,"fn":UI_FUNCTION_MAP["info"]},""]
-}
+var UI_SHIP_PLAYER = "player"
+var UI_SHIP_ENEMY = "enemy"
 
 
 
@@ -116,97 +42,25 @@ GameClient.prototype.uiSelectTeam = function () {
 
 
 
-/* uiInputPoll: returns true if game client is ready for input
- * */
-GameClient.prototype.uiInputPoll = function () {
-
-  if (this.ui_history.length == 0)
-    return false;
-
-  if (this.ui_history[this.ui_history.length - 1].input_ready)
-    return true
-
-  return false;
-
-}
-
-
-
-GameClient.prototype.ui_history=[];
-GameClient.prototype.ui_selector=UI_DEFAULT;
-/* uiComm: cycles through ui "tree" like objects
- * */
-GameClient.prototype.uiComm = function (string) {
-
-  var ui = this.ui_selector.children;
-
-  if (!ui) return;
-
-  for (var i=0;i<ui.length;i++){
-
-    var name = ui[i].name || ui[i];
-
-    if (name == string){
-
-      if (typeof ui[i] == "object") {
-
-        this.uiSetSelector(ui[i]);
-
-      } else {
-
-        this.uiSetSelector();
-
-      }
-    }
-  }
-}
-
-
-
 /* uiSetSelector: processes ui objects for display
  * */
 GameClient.prototype.uiSetSelector = function (value) {
 
-  //reset or set the global ui object
-  this.ui_selector = value || UI_DEFAULT;
-
-  //reset or append global ui history
-  if (this.ui_selector.name == "start")
-    this.ui_history = [];
-  else
-    this.ui_history.push(this.ui_selector);
-
-  //global ui html elements
-  var one = this.UI_ONE;
-  var two = this.UI_TWO;
-
-  //ui_selector children should be an array of other objects or strings
-  var val = this.ui_selector.children;
-
-  //exit early if not
-  if (!val || val.length < 2) {
-    //this means the cancel button was clicked
-    if (!this.ui_selector.input_ready) this.uiSetSelector();
-    return;
-  }
-
-  //update html elements
-  var _1 = val[0].name || val[0];
-  var _2 = val[1].name || val[1];
-  one.onclick = this.uiComm.bind(this,_1);
-  two.onclick = this.uiComm.bind(this,_2);
-
-
-  //more html elements to add to the game bar
-  if (val[0].content || val[1].content){
-    one.innerHTML = "";
-    two.innerHTML = "";
-    one.appendChild(val[0].content || _1);
-    two.appendChild(val[1].content || _2);
-  //fall back to text
+  //selected player
+  if (value == UI_SHIP_PLAYER) {
+    
+    this.ui.drawCell(4,this.ui.elements["move"]);
+    this.ui.drawCell(5,this.ui.elements["fire"]);
+  
+  //selected enemy
+  } else if (value == UI_SHIP_ENEMY) {
+    
+    this.ui.drawCell(4,{text:"info"});
+    this.ui.drawCell(5,{text:""});
+  
+  //no selection
   } else {
-    one.innerHTML = _1;
-    two.innerHTML = _2;
+    this.ui.setupInit();
   }
 
 }
@@ -261,13 +115,9 @@ GameClient.prototype.uiCancelMoveShield = function() {
  * */
 GameClient.prototype.uiConfirmMoveShield = function() {
   if (!this.cur_state.id > 0) return;
-  if (!this._arrow_inp_triggered) {this[this.queued_command.cancel_fn]();return;}
+  if (!this._arrow_inp_triggered) {this.uiCancelMoveShield();return;}
   //for good measure poll the click function again
-  this[this.queued_command.click_fn]();
-  this.arrow_queue = [];
-  this._arrow_inp = false;
-  this.arrow_done = true;
-  this.command=this[this.queued_command.fn]();
+  this.command = this.clientMoveShield()
   this.queued_command = null;
 }
 
@@ -275,10 +125,10 @@ GameClient.prototype.uiConfirmMoveShield = function() {
 
 /* uiMoveShield: process shield move for client click_fn
  * */
-GameClient.prototype.uiMoveShield = function() {
+GameClient.prototype.uiMoveShield = function(dir) {
 
   if (!this.cur_state.id > 0) return;
-  if (!this.arrow_queue || this.arrow_queue.length < 1) return;
+  //if (!this.arrow_queue || this.arrow_queue.length < 1) return;
 
   var ent = this.ent_toggled || {};
 
@@ -292,8 +142,6 @@ GameClient.prototype.uiMoveShield = function() {
     ent.saved_shield = {front:ent.shield.front,back:ent.shield.back};
 
   this._arrow_inp_triggered = true;
-
-  var dir = this.arrow_queue.shift();
 
   var f = ent.shield.front;
   var b = ent.shield.back;
@@ -310,6 +158,9 @@ GameClient.prototype.uiMoveShield = function() {
   ent.shield.front = f;
   ent.shield.back = b;
   this.has_to_draw = true;
+
+
+
   return true;
 
 }
@@ -414,126 +265,231 @@ GameClient.prototype.uiConfirmFireMissle = function() {
 
 
 
-UIElement = Ent.extend({
-  type:"Rect",
-  data : [],
-  z : 2,
-  style : "rgba(0,150,75,0.5)",
-  type : "ul",
-  items : ["state"],
-  elm_style : {
-    "display" : "table",
-    "width" : "100%",
-    "height" : "100%",
-    "margin" : "0",
-    "padding" : "0",
-  },
-  ite_style : {
-    "font-family" : "monospace",
-    "display" : "table-cell",
-    "padding-top" : "15px",
-    //"background-color" : "grey",
-    //"border" : "1px solid black",
-    "text-align" : "center",
-  },
-});
 
-UI = Class.extend({
-  template : null,
-  style_conf : null,
-  ship_input : null,//dynamic hover
-  game_list : null,//right side
-  game_bar : null,//bottom
-  state_color : {
-      "move" : "rgb(200, 200, 240)",//blue
-      "fire" : "rgb(200, 200, 240)",//blue
-      "input" :"rgb(200, 240, 200)",//green
-      "wait" : "rgb(240, 200, 200)",//red
-    },
 
-  /* UI.create : sets up the hover box thing
+var UI = Class.extend({
+
+  /* UI.state_color: for color constants
    * */
-  create : function () {
+  state_color : {
+    "move" : "rgb(200, 200, 240)",//blue
+    "fire" : "rgb(200, 200, 240)",//blue
+    "input" :"rgb(200, 240, 200)",//green
+    "wait" : "rgb(240, 200, 200)",//red
+    "selected" : "rgb(0, 0, 255)",//dark blue
+  },
 
-    this.template = new UIElement();
-    var template = this.template;
-    //template.init();
+  /* UI.create: creates html and JS objects
+   * */
+  create : function (_game) {
 
-    this.style_conf = {
-      //"class" : 'ship_input' ,
-      "position": "absolute",
-      "z-index": "1" ,
-      "left" : template.sw + "px" ,
-      "top" : template.sh + "px" ,
-      //"width" : template.sw + "px" ,
-      //"height" : template.sh + "px" ,
-      "display" : "none" ,
-    };
+    this.game = _game;
 
+    //setup canvas+2dcontext
+    this.canvas = document.createElement('canvas');
+    this.canvas.style.border=BORDER_STYLE;
+    this.canvas.setAttribute("tabindex",'0');
+    this.canvas.setAttribute("id",UI_ID);
+    this.ctx = this.canvas.getContext('2d');
 
-    this.ship_input = document.createElement('div');
-    this.ship_input.setAttribute("style", cssify(this.style_conf));
-    this.ship_input.setAttribute("id", "ship_input");
-    document.getElementsByTagName("body")[0].appendChild(this.ship_input);
+    //setup and attach DOM elements
+    var div = document.createElement('div');
+    div.style.paddingTop = "5px";
+    div.appendChild(this.canvas);
+    document.getElementById('body').appendChild(div);
 
-    //this.createGameBar("state","connected","^","v","move","fire")
+    //setup ghetto JS objects which are buttons for the UI
+    this.elements = {};
+    var _elements = Object.keys(UIElements);
+    for (var i=0; i<_elements.length; i++) {
+      var e = _elements[i];
+      this.elements[e] = new UIElements[e](this.game);
+    }
 
   },
-  /* createGameBar: initilizes the html UI and sets up "game_bar" JSON
-   * for now this is the thingie along the bottom of the canvas
-   * TODO: not use this*/
+
+  /* UI.createGameBar: init the game_bar object and some internal stuff
+   * */
   createGameBar : function () {
 
-    this.template = new UIElement();
-    var template = this.template;
-
-    //arguments are
-    if (arguments.length > 0) template.items=[];
-    for (var i=0;i<arguments.length;i++) {
-      template.items.push(arguments[i]);
-    }
-
-    //remove game_bar if it is already around
-    var t = document.getElementById("game_bar");
-    if (t) t.parentNode.removeChild(t)
-
-
-    var canv = document.getElementById(CANVAS_ID);
     this.game_bar = {};
-    var p = this.game_bar.div = document.createElement('div');
-    p.setAttribute("id","game_bar");
-    //this.game_bar.style.width = canv.width + "px";
-    p.style.width = canv.width + "px";
-    p.style.height = template.sh*2 + "px";
-    p.style.border = "1px solid black";
-    //p.style["border-image"] = "url(img/pencil-border.png) 30 30 stretch";
-    //p.style["background"] = "url(img/pencil-border.png) repeat-x";
-    template.ite_style.width = template.sw + "px";
-    var s = this.game_bar.s = listify(template);
-    for (e in s.childNodes) {
-      var c = s.childNodes[e];
-      this.game_bar[c.innerHTML]= c;
+    this.game_bar_list = [];
+
+    //setup some placeholder text objects
+    for (var i=0;i<arguments.length;i++) {
+
+      this.game_bar[arguments[i]] = {};
+      this.game_bar[arguments[i]].style={}; //just temp
+      this.game_bar[arguments[i]].text = arguments[i];
+      this.game_bar_list[i] = this.game_bar[arguments[i]];
+
     }
-    s.style.width = canv.width+"px";
-    //s.style.height = template.sh*2+"px";
 
-    canv.parentNode.insertBefore(p,canv.nextSibling);
-    p.appendChild(this.game_bar.s);
-
-    this.game_bar.list = this.game_bar.s;
+    this.game_bar_size = arguments.length;
 
   },
-  /* UI.update: should receive events from other objects
-   * */
-  update : function (op,data,seat){
-    if (op == "state") {
-      if (seat) this.game_bar["state"].innerHTML = ""+seat.moves;
-      this.game_bar["state"].style.background = ""+this.state_color[data];
 
-    } else if (op == "conn") {
-      this.game_bar["connected"].innerHTML = "conn:<br/>"+!data;
-      this.game_bar["connected"].style.background = data ?
-        ""+this.state_color["wait"] : ""+this.state_color["input"];
+
+
+  /* UI.drawCell: clears and then draws an image and/or text to a game_bar cell
+   * @n: index of the cell to be drawn (left to right)
+   * @obj: optional UIElements member that will replace the cell */
+  drawCell : function (n,obj){
+
+    if (!obj) {obj = this.game_bar_list[n];}
+    else this.game_bar_list[n] = obj;
+
+    var w = this.cell_width;
+    var h = this.canvas.height;
+
+    var x = n*w;
+    var xc = x+(w/2);
+    var yc = h/2;
+
+    this.ctx.clearRect(x,0,w,h)
+
+    //draw background color if needed
+    if (obj.bg) {
+      this.ctx.fillStyle = this.state_color[obj.bg];
+      this.ctx.fillRect(x,0,w,h)
     }
-  }
+
+    //draw cell highlight border if needed
+    if (obj.border) {
+      this.ctx.strokeStyle = this.state_color["selected"]
+      this.ctx.lineWidth = 5;
+      this.ctx.strokeRect(x,0,w,h)
+    }
+
+    //draw text to game bar
+    if (obj.text) {
+
+      var f = obj.fontpx ? obj.fontpx : this.game.ui_text_scale;
+      if (f > h) f = h;
+      this.ctx.font = f + "px sans-serif";
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "middle";
+      this.ctx.fillStyle = "black";
+
+      this.ctx.fillText(obj.text,xc,yc,w);
+
+    //draw images to game bar
+    } else if (obj.img) {
+
+      //save image ratio
+      if (!obj.ratio) obj.ratio = 0.75;
+      var rw = w*obj.ratio;
+      var rh = h*obj.ratio;
+
+      //save half width/height for center of image location
+      var hx = -(rw/2);
+      var hy = -(rh/2);
+      if (obj.imgtext) hy -= ICON_BUFF;
+
+      //translate and rotate to image location
+      this.ctx.save();
+      this.ctx.translate(xc,yc);
+      this.ctx.rotate(obj.angle);
+      this.ctx.drawImage(obj.img,hx,hy,rw,rh);
+      this.ctx.restore();
+
+      //draw additional text if need be
+      if (obj.imgtext) {
+
+        var f = obj.fontpx ? obj.fontpx : this.game.ui_text_scale;
+        if (f > h) f = h;
+        this.ctx.font = f + "px sans-serif";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillStyle = "black";
+
+        //offset by half height and buffer space
+        var tyc = yc - hy - ICON_BUFF;
+        this.ctx.fillText(obj.imgtext,xc,tyc,w);
+      }
+
+    }
+
+  },
+
+
+  drawAll : function () {
+
+    this.cell_width = this.canvas.width / this.game_bar_size;
+
+    for (var i=0; i < this.game_bar_list.length; i++) {
+      this.drawCell(i,this.game_bar_list[i]);
+    }
+
+  },
+
+  drawItem : function () {
+
+  },
+
+  getCellText : function(n) {
+
+    return this.game_bar_list[n].text || "none";
+    
+  },
+  getCellBg : function(n) {
+
+    return this.game_bar_list[n].bg || null;
+    
+  },
+
+  update : function (op,data,seat) {
+
+    //update moves available box
+    if (op == "state"){
+      
+      //draw the number of moves available
+      if (seat) {
+        if (seat.moves != this.getCellText(0) || data != this.getCellBg(0)) {
+          this.drawCell(0, { text:seat.moves.toString(), fontpx:75, bg:data });
+        }
+      }
+
+    //update the connection test box
+    } else if (op = "conn") {
+      var bg = data ? "wait" : "input";
+      
+      this.drawCell(1, { text:!data?"connected":"disconnected", bg:bg } );
+    }
+
+  },
+
+  execComm : function (n) {
+    if (typeof this.game_bar_list[n].fn == "function")
+      this.game_bar_list[n].fn();
+  },
+
+  goClick : function (e) {
+
+    e.preventDefault();
+    e = getCords(this.game,e);
+
+    var click_cell = Math.ceil(e.x / this.cell_width) - 1;
+
+    if (click_cell >= 0)
+      this.game.ui.execComm(click_cell);
+
+  },
+
+  setupInit : function () {
+
+    this.drawCell(2,this.elements["up"]);
+    this.drawCell(3,this.elements["down"]);
+    this.drawCell(4,{text:"select"});
+    this.drawCell(5,{text:"a ship"});
+
+  },
+
+  spellSwipe : function () {
+    this.drawCell(2,{text:"S",fontpx:75});
+    this.drawCell(3,{text:"W",fontpx:75});
+    this.drawCell(4,{text:"IP",fontpx:75});
+    this.drawCell(5,{text:"E!",fontpx:75});
+  },
+
 });

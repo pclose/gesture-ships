@@ -1,0 +1,256 @@
+
+
+
+<html>
+<head>
+<style>
+body
+{
+overflow:hidden;
+width:100%;
+}
+</style>
+
+
+</head>
+<body id="body">
+
+
+
+<script src="../js/core.js"></script>
+<script src="../js/box2D.js"></script>
+<script src="../js/game.js"></script>
+<script src="../js/ship.js"></script>
+<script src="../js/projectile.js"></script>
+<script src="../js/phys.js"></script>
+<script src="../js/client.js"></script>
+<script src="../js/interface.js"></script>
+<script src="../js/input.js"></script>
+
+
+
+<script>
+
+function mov(canvas) {
+  this.mov_arr = [];
+  this.c = canvas;
+  this.w = 0;
+  this.initOffsets();
+  this.interval = setInterval(this.tick.bind(this),16);
+}
+
+mov.prototype.initOffsets = function () {
+  
+  //these are used if on android mobile/chrome
+  this.touch_offset_X = window.screen.width == document.documentElement.clientWidth
+    ? window.screen.width : window.outerWidth;
+  this.touch_offset_Y = window.screen.height == document.documentElement.clientHeight
+    ? window.screen.height : window.outerHeight;
+
+  /*var m = document.createElement('meta');
+  m.setAttribute('name','viewport');
+  m.setAttribute('content','width=device-width, user-scalable=no, initial-scale=0');
+  document.getElementsByTagName('head')[0].appendChild(m);*/ 
+}
+
+mov.prototype.move = function (v) {
+  
+  if (!this.go) return;
+  
+  if (v.touches && v.touches.length) {
+    
+    v.x=v.touches[0].screenX; 
+    v.y=v.touches[0].screenY; 
+    
+    v.x = ( v.x / this.touch_offset_X ) * this.c.width;
+    v.y = ( v.y / this.touch_offset_Y ) * this.c.height;
+
+  }
+
+  if (this._yes){
+    this.mov_arr.push({x:v.x,y:v.y});
+  }
+
+}
+mov.prototype.mDown = function (v) {
+  
+  if (!this.go) return;
+
+  if (v.touches) v.preventDefault();
+
+  this._yes=true;
+  this.mov_arr = [];
+  this.s = this.w;
+}
+mov.prototype.mUp = function (v) {
+
+  if (!this.go) return;
+  
+  this._yes=false;
+  this.e = this.w;
+  this.dEnd(this.mov_arr);
+}
+mov.prototype.dEnd = function(v) {
+  
+  if (!this.mov_arr.length) return;
+
+  var ofs = {x : this.c.offsetLeft,y : this.c.offsetTop},
+    cw = this.c.width, 
+    ch = this.c.height,
+    ctx = this.c.getContext("2d"),
+    ma = this.mov_arr,
+    dist = 0,
+    time = this.e - this.s
+  ;
+  
+  ctx.clearRect(0,0,cw,ch);
+  ctx.strokeStyle = "rgb(0,0,255)";
+  ctx.beginPath();
+  
+  ctx.moveTo(ma[0].x - ofs.x, ma[0].y - ofs.y);
+  for (var i=1;i<ma.length;i++) {
+    var a = ma[i],b = ma[i-1];
+    ctx.lineTo(a.x - ofs.x, b.y - ofs.y);
+    var inter = Math.pow((b.x - a.x),2) + Math.pow((b.y - a.y),2);
+    dist += inter;
+    //dist += Math.sqrt(inter);
+  }
+  this.dist = Math.round(dist);
+  this.time = time;
+  ctx.stroke();
+}
+mov.prototype.tick = function() {
+  this.w ++;
+
+  if (this.time && !this.goflag)
+    this.goflag=this.w;
+  if (this.time && this.dist && this.w - this.goflag > 100)
+    this.movEnt(this.time,this.dist);
+
+}
+mov.prototype.initMove = function () {
+  window.addEventListener('mousemove',this.move.bind(this));
+  window.addEventListener('mousedown',this.mDown.bind(this));
+  window.addEventListener('mouseup',this.mUp.bind(this));
+  window.addEventListener('touchmove',this.move.bind(this),true);
+  window.addEventListener('touchstart',this.mDown.bind(this),true);
+  window.addEventListener('touchend',this.mUp.bind(this),true);
+
+
+  /*window.addEventListener('mousemove',obj.move.bind(obj));
+  window.addEventListener('mousedown',obj.mDown.bind(obj));
+  window.addEventListener('mouseup',obj.mUp.bind(obj));
+  window.addEventListener('touchmove',obj.move.bind(obj),true);
+  window.addEventListener('touchstart',obj.mDown.bind(obj),true);
+  window.addEventListener('touchend',obj.mUp.bind(obj),true);*/
+
+}
+mov.prototype.removeEv = function() {
+  window.removeEventListener('mousemove');//,obj.move.bind(obj));
+  window.removeEventListener('mousedown');//,obj.mDown.bind(obj));
+  window.removeEventListener('mouseup');//,obj.mUp.bind(obj));
+
+  window.removeEventListener('touchmove');//,obj.move.bind(obj),true);
+  window.removeEventListener('touchstart');//,obj.mDown.bind(obj),true);
+  window.removeEventListener('touchend');//,obj.mUp.bind(obj),true);
+
+}
+mov.prototype.regGesture = function () {
+  this.go = true;
+}
+mov.prototype.movEnt = function (time,dist) {
+  
+  var ent = game.ent_arr[0];
+  var beg = this.mov_arr[0];
+  var end = this.mov_arr[this.mov_arr.length-1];
+  var pos = ent.body.GetWorldCenter();
+ 
+  beg = {x:beg.x/game.physics_offset,y:beg.y/game.physics_offset};
+  end = {x:end.x/game.physics_offset,y:end.y/game.physics_offset};
+  console.log(beg,end);
+
+  /*beg = {x:beg.x-end.x,y:beg.y-end.y};
+  end = {x:pos.x-beg.x,y:pos.y-beg.y};
+  console.log(beg,end);*/
+  
+  beg.x -= end.x;
+  beg.y -= end.y;
+  
+  end.x = pos.x - beg.x;
+  end.y = pos.y - beg.y;
+  
+  var move = new b2Vec2(end.x,end.y); 
+  console.log(pos);
+
+  move.Subtract(pos);
+  console.log(move);
+  
+  move.Multiply(dist/time);
+  console.log(move);
+
+  /*console.log(move);
+  console.log(move);
+  move.Multiply(((dist / time) * MOVE_FORCE_MULT) * ent.move_force_mult);
+  console.log(move);*/
+
+
+  ent.endination_radians = Math.atan2(move.x,-move.y);
+  ent.body.ApplyForce(move,pos);
+
+  this.goflag=null;
+  this.time=null;
+  this.dist=null;
+  this.go=false;
+}
+
+game = new GameClient();
+game.createClient();
+game.addEnt({"name":"img/ship_b_body0.png",
+  "x":16.25,"y":8.125,"drag":5.025,
+  "h":1.5,"w":1,"sh":75,"sw":50,
+  "angle":3.14,"team":0,"health":5,
+  "doodads":[
+  {
+    "name":"img/ship_missle.png",
+    "x":1,"y":0.5,
+    "w":0.2,"h":0.9,
+    "type":"projectile",
+    "count":1,
+    "dmg":2
+  },
+  {
+    "name":"img/ship_missle.png",
+    "x":0,"y":0.5,
+    "w":0.2,"h":0.9,
+    "type":"projectile",
+    "count":1,
+    "dmg":2
+  }]
+});
+game.comm.go=function () {};
+game.comm.cb=function () {};
+game.run();
+
+var ui = game.ui;
+game.stateCheck=function(){};
+var t = '<button class="game_bar_button" id="load_sub"> load </button>';
+ui.createGameBar("state","connected",'up<br />^','down<br />v',"yes",t);
+
+  window.removeEventListener('mousemove');
+  window.removeEventListener('mousedown');
+  window.removeEventListener('mouseup');
+
+  window.removeEventListener('touchmove');
+  window.removeEventListener('touchstart');
+  window.removeEventListener('touchend');
+
+var c=document.getElementById(CANVAS_ID);
+var obj = new mov(c);
+document.getElementById("load_sub").onclick = obj.regGesture.bind(obj);
+obj.initMove();
+</script>
+</body>
+</html>
+
+
+

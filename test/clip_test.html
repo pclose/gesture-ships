@@ -1,0 +1,407 @@
+
+
+
+<html>
+<head>
+<style>
+body
+{
+overflow:hidden;
+width:100%;
+}
+</style>
+
+
+</head>
+<body id="body">
+
+
+<script src="../js/core.js"></script>
+<script src="../js/box2D.js"></script>
+<script src="../js/game.js"></script>
+<script src="../js/ship.js"></script>
+<script src="../js/projectile.js"></script>
+<script src="../js/phys.js"></script>
+<script src="../js/client.js"></script>
+<script src="../js/interface.js"></script>
+<script src="../js/input.js"></script>
+
+
+
+<script>
+
+SWIPE_DELAY = 20;
+
+function mov(canvas) {
+  this.mov_arr = [];
+  this.c = canvas;
+  this.w = 0;
+  this.initOffsets();
+  this.interval = setInterval(this.tick.bind(this),16);
+}
+
+mov.prototype.initOffsets = function () {
+
+  //these are used if on android mobile/chrome
+  this.touch_offset_X = window.screen.width == document.documentElement.clientWidth
+    ? window.screen.width : window.outerWidth;
+  this.touch_offset_Y = window.screen.height == document.documentElement.clientHeight
+    ? window.screen.height : window.outerHeight;
+
+  /*var m = document.createElement('meta');
+  m.setAttribute('name','viewport');
+  m.setAttribute('content','width=device-width, user-scalable=no, initial-scale=0');
+  document.getElementsByTagName('head')[0].appendChild(m);*/
+}
+
+mov.prototype.move = function (v) {
+
+  if (!this.go) return;
+
+  if (v.touches && v.touches.length) {
+
+    v.x=v.touches[0].screenX;
+    v.y=v.touches[0].screenY;
+
+    v.x = ( v.x / this.touch_offset_X ) * this.c.width;
+    v.y = ( v.y / this.touch_offset_Y ) * this.c.height;
+
+  }
+
+  if (this._yes){
+    this.mov_arr.push({x:v.x,y:v.y});
+  }
+
+}
+mov.prototype.mDown = function (v) {
+
+  if (!this.go) return;
+
+
+  if (v.touches) v.preventDefault();
+
+  this._yes=true;
+  this.mov_arr = [];
+  this.s = this.w;
+}
+mov.prototype.mUp = function (v) {
+
+  if (!this.go) return;
+
+  this._yes=false;
+  this.e = this.w;
+  this.dEnd(this.mov_arr);
+}
+mov.prototype.dEnd = function(v) {
+
+  if (!this.mov_arr.length) return;
+
+  var ofs = {x : this.c.offsetLeft,y : this.c.offsetTop},
+    cw = this.c.width,
+    ch = this.c.height,
+    ctx = this.c.getContext("2d"),
+    ma = this.mov_arr,
+    dist = 0,
+    time = this.e - this.s
+  ;
+
+  //ctx.clearRect(0,0,cw,ch);
+  //ctx.strokeStyle = "rgb(0,0,255)";
+  //ctx.beginPath();
+
+  ctx.moveTo(ma[0].x - ofs.x, ma[0].y - ofs.y);
+  for (var i=1;i<ma.length;i++) {
+    var a = ma[i],b = ma[i-1];
+    //ctx.lineTo(a.x - ofs.x, b.y - ofs.y);
+    var inter = Math.pow((b.x - a.x),2) + Math.pow((b.y - a.y),2);
+    dist += inter;
+    //dist += Math.sqrt(inter);
+  }
+  //ctx.stroke();
+
+  this.dist = Math.round(dist);
+  this.time = time;
+
+}
+mov.prototype.tick = function() {
+  this.w ++;
+
+  if (this.time && !this.goflag)
+    this.goflag=this.w;
+  if (this.time && this.dist && this.w - this.goflag > SWIPE_DELAY)
+    this.movEnt(this.time,this.dist);
+
+}
+mov.prototype.initMove = function () {
+  window.addEventListener('mousemove',this.move.bind(this));
+  window.addEventListener('mousedown',this.mDown.bind(this));
+  window.addEventListener('mouseup',this.mUp.bind(this));
+  window.addEventListener('touchmove',this.move.bind(this),true);
+  window.addEventListener('touchstart',this.mDown.bind(this),true);
+  window.addEventListener('touchend',this.mUp.bind(this),true);
+
+
+  /*window.addEventListener('mousemove',obj.move.bind(obj));
+  window.addEventListener('mousedown',obj.mDown.bind(obj));
+  window.addEventListener('mouseup',obj.mUp.bind(obj));
+  window.addEventListener('touchmove',obj.move.bind(obj),true);
+  window.addEventListener('touchstart',obj.mDown.bind(obj),true);
+  window.addEventListener('touchend',obj.mUp.bind(obj),true);*/
+
+}
+mov.prototype.removeEv = function() {
+  window.removeEventListener('mousemove');//,obj.move.bind(obj));
+  window.removeEventListener('mousedown');//,obj.mDown.bind(obj));
+  window.removeEventListener('mouseup');//,obj.mUp.bind(obj));
+
+  window.removeEventListener('touchmove');//,obj.move.bind(obj),true);
+  window.removeEventListener('touchstart');//,obj.mDown.bind(obj),true);
+  window.removeEventListener('touchend');//,obj.mUp.bind(obj),true);
+
+}
+mov.prototype.regGesture = function () {
+  this.go = true;
+}
+mov.prototype.movEnt = function (time,dist) {
+
+  var ent = game.ent_arr[0];
+  var beg = this.mov_arr[0];
+  var end = this.mov_arr[this.mov_arr.length-1];
+  var pos = ent.body.GetWorldCenter();
+
+  beg = {x:beg.x/game.physics_offset,y:beg.y/game.physics_offset};
+  end = {x:end.x/game.physics_offset,y:end.y/game.physics_offset};
+
+  /*beg = {x:beg.x-end.x,y:beg.y-end.y};
+  end = {x:pos.x-beg.x,y:pos.y-beg.y};
+  console.log(beg,end);*/
+
+  beg.x -= end.x;
+  beg.y -= end.y;
+
+  end.x = pos.x - beg.x;
+  end.y = pos.y - beg.y;
+
+  var move = new b2Vec2(end.x,end.y);
+
+  move.Subtract(pos);
+
+  move.Multiply(dist/time);
+
+  /*console.log(move);
+  console.log(move);
+  move.Multiply(((dist / time) * MOVE_FORCE_MULT) * ent.move_force_mult);
+  console.log(move);*/
+
+
+  ent.endination_radians = Math.atan2(move.x,-move.y);
+  ent.body.ApplyForce(move,pos);
+
+  this.goflag=null;
+  this.time=null;
+  this.dist=null;
+  this.go=false;
+}
+
+
+
+  /*addDooDad : add other stuff that should be tracked
+   * these aren't colliable or attached to anything */
+Game.prototype.addDooDad = function(settings) {
+
+    var doodad = new DooDad();
+    doodad.x = settings.x;
+    doodad.y = settings.y;
+    if (settings.color) doodad.color = settings.color;
+    if (settings.text) doodad.text = settings.text;
+    if (settings.l) doodad.l = settings.l;
+    if (settings.ex) doodad.ex = settings.ex;
+    if (settings.ey) doodad.ey = settings.ey;
+    this.doodad_arr.push(doodad);
+
+}
+
+DooDad = Ent.extend({
+  text: null,
+  lifetime : 100,
+  age : 100,
+  x : 0, y : 0,sw : 3,sh : 3,
+  color : "rgb(255,0,0)",
+  procUpdate : function () {
+    this.age ++;
+  },
+  draw : function (c) {
+
+  if (typeof this.text  == "string" && typeof this.l != "undefined") {
+      c.fillStyle = this.color;
+      c.strokeStyle = this.color;
+      c.beginPath();
+      c.moveTo(this.x,this.y);
+      c.lineTo(this.x + this.l,this.y+this.l);
+      c.stroke();
+      c.fillText(this.text, this.x + this.l, this.y+this.l);
+
+    } else if (typeof this.text  == "string") {
+      c.fillText(this.text ,  this.x,this.y    );
+
+    } else if (typeof this.l == "number" && this.ex && this.ey) {
+      c.strokeStyle = this.color;
+      c.beginPath();
+      c.moveTo(this.x,this.y);
+      c.lineTo(this.ex,this.ey);
+      c.stroke();
+
+    } else {
+      c.fillStyle = this.color;
+      c.fillRect(this.x,this.y,this.sw,this.sh);
+    }
+
+  }
+});
+
+
+game = new GameClient();
+IS_SERVER=false;
+game.create();
+game.createClient();
+game.comm.go=function () {};
+game.comm.cb=function () {};
+game.run();
+
+//var temp = Ship.prototype.procEdges.toString().replace(/function.*/,"").replace(/\s*}$/,"");
+
+Ship.prototype.procEdges = function () {
+  //test if the body fell off the canvas
+  var pos = this.body.GetPosition();
+  if (pos.x > this.physXY.pW)
+    var b = new b2Vec2(this.physXY.pW_,pos.y);
+  else if (pos.x < this.physXY.pW_)
+    var b = new b2Vec2(this.physXY.pW,pos.y);
+  else if (pos.y > this.physXY.pH)
+    var b = new b2Vec2(pos.x,this.physXY.pH_);
+  else if (pos.y < this.physXY.pH_)
+    var b = new b2Vec2(pos.x,this.physXY.pH);
+
+  if (b) {//transpose across to the other side
+    var ang = this.body.GetAngle();
+    var bb = new b2Mat22(20,20)//still don't understand this
+    var t = new b2Transform(b,bb);//or this
+    this.body.SetTransform(t);
+    this.body.SetAngle(ang);
+  }
+
+
+  if (!IS_SERVER) {
+    this.clip = null;
+    var clips = [];
+
+    if (pos.x > this.drawXY.pW)
+      clips.push({x:-this.draw_ofs + (pos.x - this.drawXY.pW) , y:pos.y});
+    else if (pos.x < this.drawXY.pW_)
+      clips.push({x:this.drawXY.pW + this.draw_ofs + pos.x,y:pos.y});
+
+    if (pos.y > this.drawXY.pH)
+      clips.push({x:pos.x, y:-this.draw_ofs + (pos.y - this.drawXY.pH)});
+    else if (pos.y < this.drawXY.pH_)
+      clips.push({x:pos.x, y:this.drawXY.pH + this.draw_ofs + pos.y});
+
+    if (clips.length > 0)
+      this.clip = clips;
+
+  }
+}
+
+_s = function (l) {
+
+  var loc = l || {};
+
+  loc.x = typeof loc.x == "number" ? loc.x : 16.25;
+  loc.y = typeof loc.y == "number"? loc.y : 8.125;
+  loc.name = typeof loc.name == "string" ? loc.name : "img/ship_b_body1.png";
+  loc.team = typeof loc.team == "number" ? loc.team : 1;
+
+
+  var result = {
+    "name" : loc.name,
+    "x":loc.x,"y":loc.y,
+    "drag":5.025,
+    "h":3,"w":2,"sh":75,"sw":50,
+    "angle":3.14,"team":loc.team,"health":5,
+    "doodads":[
+    {
+      "name":"img/ship_missle.png",
+      "x":1,"y":0.5,
+      "w":0.2,"h":0.9,
+      "type":"projectile",
+      "count":1,
+      "dmg":2
+    },
+    {
+      "name":"img/ship_missle.png",
+      "x":0,"y":0.5,
+      "w":0.2,"h":0.9,
+      "type":"projectile",
+      "count":1,
+      "dmg":2
+    }]
+  }
+
+  return result;
+
+}
+
+game.addEnt( _s());
+game.addEnt( _s({name:"img/ship_b_body0.png" ,y : 16.125, team:0} ));
+//game.addEnt( s({name:"img/ship_b_body0.png" ,y : 19.125, team:0} ));
+//game.addEnt( s({name:"img/ship_b_body0.png" ,x : 15.125 ,y : 16.125, team:0} ));
+
+var ui = game.ui;
+game.stateCheck=function(){};
+var t = '<button class="game_bar_button" id="load_sub"> swipe </button>';
+ui.createGameBar("rotate_button","clear_button",'stop_button','start_button',"step_button",t);
+
+ui.game_bar["stop_button"].innerHTML = "<button>stop</button>";
+ui.game_bar["stop_button"].onclick = function () {game.stop();}
+
+ui.game_bar["start_button"].innerHTML = "<button>start</button>";
+ui.game_bar["start_button"].onclick = function () {game.run();}
+
+ui.game_bar["step_button"].innerHTML = "<button>step</button>";
+ui.game_bar["step_button"].onclick = function () {game.update();}
+
+ui.game_bar["clear_button"].innerHTML = "<button>clear doodads</button>";
+ui.game_bar["clear_button"].onclick = function () {
+  game.doodad_arr = []; game.drawAll();
+}
+
+ui.game_bar["rotate_button"].innerHTML = "<button>rotate</button>";
+ui.game_bar["rotate_button"].onclick = function () {
+  var ang = game.ent_arr[0].body.GetAngle();
+  ang += (90 * ( Math.PI / 180)) //% Math.PI *180;
+  console.log(ang);
+  game.ent_arr[0].body.SetAngle(ang);
+  game.has_to_draw = true;
+  game.update();
+
+}
+
+var c=document.getElementById(CANVAS_ID);
+var obj = new mov(c);
+document.getElementById("load_sub").onclick = obj.regGesture.bind(obj);
+obj.initMove();
+
+function S_(a) {
+  if (!arguments.length > 0) return game.ent_arr[0].body.GetAngle();
+  game.ent_arr[0].body.SetAngle(a);
+  game.has_to_draw =true;
+  game.update()
+}
+function V_(n) {return n % (2*Math.PI)}
+
+
+</script>
+</body>
+</html>
+
+
+

@@ -1,0 +1,238 @@
+
+
+
+<html>
+<head>
+<style>
+body
+{
+overflow:hidden;
+width:100%;
+}
+</style>
+
+
+</head>
+<body id="body">
+
+<script src="../js/core.js"></script>
+<script src="../js/box2D.js"></script>
+<script src="../js/game.js"></script>
+<script src="../js/ship.js"></script>
+<script src="../js/projectile.js"></script>
+<script src="../js/phys.js"></script>
+<script src="../js/client.js"></script>
+<script src="../js/interface.js"></script>
+<script src="../js/input.js"></script>
+
+<script>
+
+
+var OBJ_DEFAULT =
+
+{
+  "name": "start",
+  "children": [
+    {
+    "name":"move",
+    "children":
+      [{
+        "name": "ship",
+        "children":["cancel",{"name":"confirm","children":["SWIPE!",""],"input_ready":true}]
+      },
+      {
+        "name":"shield",
+        "children":["cancel",{"name":"confirm","children":["<<<","done"],"input_ready":true}]
+      }]
+    },
+    {
+      "name":"fire",
+      "children":
+      [{
+        "name": "laser",
+        "children":["cancel",{"name":"confirm","children":["SWIPE!",""],"input_ready":true}]
+      },
+      {
+        "name":"missle",
+        "children":["cancel",{"name":"confirm","children":["SWIPE!",""],"input_ready":true}]
+      }]
+    }
+  ]
+}
+
+GameClient.prototype.ui_history=[];
+
+GameClient.prototype.uiComm = function (string) {
+
+  var ui = this.ui_selector.children;
+
+  for (var i=0;i<ui.length;i++){
+
+    var name = ui[i].name || ui[i];
+
+    if (name == string){
+
+      if (typeof ui[i] == "object") {
+
+        this.ui_selector = ui[i];
+        this.setUiSelector();
+
+      } else {
+
+        this.ui_selector = OBJ_DEFAULT;
+        this.setUiSelector();
+
+      }
+    }
+  }
+}
+
+GameClient.prototype.setUiSelector = function () {
+
+  var one = this.ui.game_bar["move"];
+  var two = this.ui.game_bar["fire"];
+
+  var val = this.ui_selector.children;
+
+  var _1 = val[0].name || val[0];
+  var _2 = val[1].name || val[1];
+  one.onclick = this.uiComm.bind(this,_1);
+  two.onclick = this.uiComm.bind(this,_2);
+
+
+  //content property would be an HTML tag to add to the game_bar
+  if (this.ui_selector.content){
+    var k = Object.keys(this.ui_selector.content)
+    for (var i=0;i<k.length;i++) {
+      this.ui.game_bar[k[i]].innerHTML = this.ui_selector.content[k[i]];
+    }
+
+  //fall back to text
+  } else {
+    one.innerHTML = _1;
+    two.innerHTML = _2;
+  }
+
+  if (this.ui_selector.name == "start")
+    this.ui_history = [];
+  else
+    this.ui_history.push(this.ui_selector);
+
+}
+
+Ship.prototype.ui_data = { //FIXME
+  type : "ul",
+  items : ["move","fire"],
+  elm_style : {
+    "display" : "table",
+    "width" : "100%",
+    "height" : "100%",
+    "margin" : "0",
+    "padding" : "0",
+  },
+  ite_style : {
+    "font-family" : "monospace",
+    "display" : "table-cell",
+    "padding-top" : "15px",
+    "background-color" : "rgba(180, 178, 178, 0.5)",
+    "border" : "1px solid black",
+    "text-align" : "center",
+  },
+  ite_callback : {
+    callback : function (e) {this.game.uiComm.call(this,e.target.innerHTML);},
+    func : "mouseup"
+  }
+}
+
+GameClient.prototype.drawUI = function(ent) {
+  //var num_inputs = ent.ui_data.items.length;
+  var num_inputs = this.ui_selector.value.length;
+  var pos = ent.body.GetWorldCenter();
+  var hlf = {x:ent.ctx,y:ent.cty};
+  var ofs = this.canvas_offset;
+  var s = this.ui.ship_input;
+  var ui_ofs = {
+    x:this.ui.template.sw / num_inputs,
+    y:this.ui.template.sh /// num_inputs
+      };
+  var l = (pos.x * this.physics_offset) + ofs.x + hlf.x - ui_ofs.x;
+  var t = (pos.y * this.physics_offset) + ofs.y + hlf.y - ui_ofs.y;
+
+  s.style.top = t + "px";
+  s.style.left = l + "px";
+  s.style.display = "inline";//"block";
+  s.style.width = ui_ofs.y * num_inputs + "px";
+
+  var val = this.ui_selector.value;
+  var _1 = val[0].name || val[0];
+  var _2 = val[1].name || val[1];
+
+  s.innerHTML="";
+  ent.ui_data.items = [_1,_2]
+  var ui_html = listify(ent.ui_data);
+  ui_html.setAttribute("id",this.ent_toggled.name);
+
+  s.appendChild(ui_html);
+}
+
+GameClient.prototype.ui_selector = OBJ_DEFAULT;
+
+
+
+game = new GameClient();
+IS_SERVER=false;
+
+game.createClient();
+game.comm.go=function () {};
+game.comm.cb=function () {};
+game.run();
+game.addEnt(s());
+game.fillSeat(new Seat());
+
+
+function s(l) {
+
+  var loc = l || {};
+
+  loc.x = typeof loc.x == "number" ? loc.x : 16.25;
+  loc.y = typeof loc.y == "number"? loc.y : 8.125;
+  loc.name = typeof loc.name == "string" ? loc.name : "img/black.gif";
+  loc.team = typeof loc.team == "number" ? loc.team : 0;
+
+
+  var result = {
+    "name" : loc.name,
+    "x":loc.x,"y":loc.y,
+    "drag":5.025,
+    "h":2,"w":2,"sh":75,"sw":50,
+    "angle":0,"team":loc.team,"health":0,
+
+    "doodads" : [
+    {
+      "name":"../game/img/blue.gif",
+      "x":0.5,"y":0.25,
+      "w":0.1,"h":1,
+      "type":"projectile",
+      "count":1,
+      "dmg":2
+    }
+
+    ]
+
+
+  }
+
+  return result;
+
+}
+
+
+
+game.ui.game_bar["state"].onclick = game.pushState("input");
+
+</script>
+</body>
+</html>
+
+
+

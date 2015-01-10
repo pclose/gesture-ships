@@ -1,0 +1,227 @@
+
+
+
+<html>
+<head>
+<style>
+body
+{
+overflow:hidden;
+width:100%;
+}
+</style>
+
+
+</head>
+<body id="body">
+
+
+
+<!--- <script src="../game/js/core.js"></script>                                              
+<script src="../game/js/box2D.js"></script>                                             
+<script src="../game/js/game.js"></script>                                              
+<script src="../game/js/client.js"></script>
+<script src="c_test.js"></script> -->
+
+<canvas id="canvas" width=600 height=600 style="border:1px solid black;">
+
+
+<script>
+
+var arr = [];
+var dot_size = 3;
+var drawLine = function (ctx,loc,style) {
+
+  ctx.strokeStyle = style;
+  ctx.beginPath();
+  ctx.moveTo(loc.x1,loc.y1);
+  ctx.lineTo(loc.x2,loc.y2);
+  ctx.stroke();
+
+}
+
+window.addEventListener('mouseup', ev2) 
+
+function ev2 (e){
+ 
+  var canv = document.getElementById('canvas');
+  var ctx = canv.getContext('2d');
+  
+  var _x = e.pageX - canv.offsetLeft - 1;
+  var _y = e.pageY - canv.offsetTop - 1;
+  
+ ctx.fillStyle = "red";
+ ctx.fillRect( _x - (dot_size/2), _y - (dot_size/2), dot_size,dot_size);
+ ctx.stroke();
+ 
+ arr.push({x:_x,y:_y});
+ 
+ if (arr.length >= 3) {
+    
+     var dist =
+      Math.sqrt(
+        Math.pow(arr[1].x - arr[0].x, 2) +
+        Math.pow(arr[1].y - arr[0].y, 2)
+      );
+      
+    var dist2 =
+      Math.sqrt(
+        Math.pow(arr[1].x - arr[2].x, 2) +
+        Math.pow(arr[1].y - arr[2].y, 2)
+      );
+    
+    var line1 = 
+      {x1:arr[0].x, y1: arr[0].y,
+       x2:arr[1].x, y2: arr[1].y}
+    
+    var tan1 = Math.atan2(
+      line1.y1 - line1.y2,
+      line1.x1 - line1.x2 
+    )
+    
+    var tan2 = Math.atan2(
+      line1.y1 - arr[2].y,
+      line1.x1 - arr[2].x);
+    
+    console.log(tan1);
+    console.log(-tan2);
+    
+    drawLine(ctx,line1,"black");
+    
+    var a1,a2;
+    if (tan1 > 0)
+      a1 = Math.PI - tan1;
+    else
+      a1 = tan1 - Math.PI;
+      
+    if (tan2 > 0)
+      a2 = Math.PI - tan2;
+    else
+      a2 = tan2 - Math.PI;
+    
+    
+    ctx.beginPath();
+    ctx.arc(line1.x1,line1.y1,dist2,a1,a2);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.arc(line1.x1,line1.y1,dist2,a2,a1);
+    ctx.stroke();
+    
+    arr = [];
+ } 
+}
+
+
+function ev (e){
+ 
+  var canv = document.getElementById('canvas');
+  var ctx = canv.getContext('2d');
+  
+  var _x = e.pageX - canv.offsetLeft - 1;
+  var _y = e.pageY - canv.offsetTop - 1;
+  
+ ctx.fillStyle = "red";
+ ctx.fillRect( _x - (dot_size/2), _y - (dot_size/2), dot_size,dot_size);
+ ctx.stroke();
+ 
+ arr.push({x:_x,y:_y});
+ 
+ if (arr.length >= 2) {
+    
+     var dist =
+      Math.sqrt(
+        Math.pow(arr[1].x - arr[0].x, 2) +
+        Math.pow(arr[1].y - arr[0].y, 2)
+      );
+    
+    //line 1 and 2 offset respective 
+    var offset_x = arr[1].y > arr[0].y ? dist : -dist;
+    var offset_y = arr[1].x < arr[0].x ? dist : -dist;
+    
+    var line1 = 
+      {x1:arr[0].x, y1: arr[0].y,
+       x2:arr[1].x, y2: arr[1].y}
+    
+    //line2 originates from the beginning of line1
+    //extends vertically up or down on the y axis
+    var line2 =
+      {x1:arr[0].x, y1: arr[0].y,
+       x2:arr[0].x, y2: arr[0].y + offset_x} 
+    
+    //line3 originates from the end of line1
+    //extends horizontally left or right on the x axis
+    var line3 = 
+      {x1:line1.x2, y1: line1.y2,
+       x2:line1.x2 + offset_y, y2: line1.y2}
+ 
+     
+    var slope_line1 = (line1.y1 - line1.y2) / (line1.x1 - line1.x2)
+    var slope_line2 = (line2.y1 - line2.y2) / (line2.x1 - line2.x2)
+    var slope_line3 = (line3.y1 - line3.y2) / (line3.x1 - line3.x2)
+    
+    var mid_line1 = {x:(line1.x1+line1.x2) / 2 , y:(line1.y1+line1.y2) / 2}
+    var mid_line2 = {x:(line2.x1+line2.x2) / 2 , y:(line2.y1+line2.y2) / 2}
+    var mid_line3 = {x:(line3.x1+line3.x2) / 2 , y:(line3.y1+line3.y2) / 2}
+    
+    //ctx.fillText(slope_line1.toString(2),  mid_line1.x,mid_line1.y);
+    //ctx.fillText(slope_line2.toString(2),  mid_line2.x,mid_line2.y);
+    //ctx.fillText(slope_line3.toString(2),  mid_line3.x,mid_line3.y);
+    
+    var tan1 = Math.atan2(      
+      line1.y1 - line1.y2,
+      line1.x1 - line1.x2 
+    )
+    
+    /*console.log(line1.y1 - line1.y2,
+      line1.x1 - line1.x2 );
+    
+    var tan2 = Math.atan2(      
+      line2.y1 - line2.y2,
+      line2.x1 - line2.x2 
+    )
+    
+    var tan3 = Math.atan2(      
+      line3.y1 - line3.y2,
+      line3.x1 - line3.x2 
+    )
+    
+    console.log("-------------------");
+    
+    console.log( tan1, tan2, tan3)
+    console.log(tan1 - tan2);
+    console.log(tan1 - tan3);
+    console.log("-------------------");    
+    var ang = (slope_line1 - slope_line3) / (1 + slope_line1 - slope_line3);
+    ang = Math.tan(ang);
+    console.log(ang);
+    console.log("-------------------");
+    console.log("####################");*/
+    
+    
+    drawLine(ctx,line1,"black");
+    drawLine(ctx,line2,"blue");
+    drawLine(ctx,line3,"blue");
+    
+    
+    ctx.draw
+    
+    
+    arr = [];
+ } 
+  
+ 
+ 
+ 
+ }
+
+
+
+</script>
+
+
+</body>
+</html>
+
+
+
