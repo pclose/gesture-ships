@@ -3,7 +3,7 @@ var CANVAS_ID="game_canvas_01";
 var UI_ID="ui_canvas_01";
 var CLICK_BOUND = 1;
 var UI_TEXT_SCALE = 12;
-var UI_MOBILE_TEXT_SCALE = 4;
+var UI_MOBILE_TEXT_SCALE = 2;
 BORDER_STYLE = "1px solid black";
 IS_SERVER=false;
 

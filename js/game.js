@@ -522,8 +522,12 @@ Game = Class.extend({
    */
   pollMotion : function () {
     for (var i=0; i < this.ent_arr.length; i++) {
-      var t = this.ent_arr[i].body.GetLinearVelocity();
-      if (Math.abs(t.x) > MOTION_LIM_TEST || Math.abs(t.y) > MOTION_LIM_TEST) {
+      var t1 = this.ent_arr[i].body.GetLinearVelocity();
+      var t2 = this.ent_arr[i].body.GetAngularVelocity();
+      if (Math.abs(t1.x) > MOTION_LIM_TEST 
+       || Math.abs(t1.y) > MOTION_LIM_TEST
+       || Math.abs(t2) >   MOTION_LIM_TEST ) 
+      {
         return false;
       }
     }

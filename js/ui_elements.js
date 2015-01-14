@@ -11,8 +11,6 @@ UIElements = {
     location.reload();
   }
 },
-
-
 "disconnected" : function (_game) {
   this.name = "disconnected";
   this.img = _game.loadImg('img/disconnected.gif');
@@ -187,6 +185,7 @@ UIElements = {
   this.ratio = 0.5;
   this.fn = function (){
     _game.uiCancelMoveShield();
+    _game.ui.setupInit()
   }
 },
 

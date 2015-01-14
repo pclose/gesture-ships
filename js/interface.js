@@ -80,14 +80,6 @@ GameClient.prototype.uiArrowClick = function(dir) {
 
 
 
-/* queueArrow: add arrow clicks to queue
- * */
-GameClient.prototype.uiQueueArrow = function (dir) {
-  this.arrow_queue.push(dir);
-}
-
-
-
 /* uiCancelMoveShield: undo shield move from client view
  * */
 GameClient.prototype.uiCancelMoveShield = function() {
@@ -245,6 +237,21 @@ GameClient.prototype.uiDrawSelect = function(ent) {
   ctx.fillStyle = subj.c;
   ctx.fill();
   ctx.globalAlpha = 1;
+
+  //draw circles at clip locations as well
+  if (ent.clip && ent.clip.length > 0) {
+    for (var i = 0; ent.clip.length > i; i ++) {
+      var _x = ent.clip[i].x * this.physics_offset;
+      var _y = ent.clip[i].y * this.physics_offset;
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.arc(_x,_y,subj.s,0,2*Math.PI,false);
+      ctx.fillStyle = subj.c;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+
 }
 
 
@@ -339,6 +346,8 @@ var UI = Class.extend({
     if (!obj) {obj = this.game_bar_list[n];}
     else this.game_bar_list[n] = obj;
 
+    if (this.game_bar_list[n] == "span") return;
+
     var w = this.cell_width;
     var h = this.canvas.height;
 
@@ -413,12 +422,57 @@ var UI = Class.extend({
   },
 
 
+  
+  /* drawSpan: draw across several spaces. just text for now
+   * */
+  drawSpan : function (start,end,obj) {
+
+    var n = start;
+
+    if (!obj) {obj = this.game_bar_list[n];}
+    else this.game_bar_list[n] = obj;
+    
+    for (var i=start+1; end >= i;i ++) {
+      this.game_bar_list[i] = {}; 
+      this.game_bar_list[i].span = true;
+    }
+
+    var size = end > start ? (end - start)+1 : 1;
+    this.game_bar_list[n].span=true;
+    
+    var w = this.cell_width * size;
+    var cell_w = this.cell_width;
+    var h = this.canvas.height;
+
+    var x = n*cell_w;
+    var xc = x+(w/2);
+    var yc = h/2;
+
+    this.ctx.clearRect(x,0,w,h)
+
+    //draw text to game bar
+    if (obj.text) {
+
+      var f = obj.fontpx ? obj.fontpx : this.game.ui_text_scale;
+      if (f > h) f = h;
+      this.ctx.font = f + "px sans-serif";
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "middle";
+      this.ctx.fillStyle = "black";
+
+      this.ctx.fillText(obj.text,xc,yc,w);
+    }
+
+  },
+
+
   drawAll : function () {
 
     this.cell_width = this.canvas.width / this.game_bar_size;
 
     for (var i=0; i < this.game_bar_list.length; i++) {
-      this.drawCell(i,this.game_bar_list[i]);
+      if (!this.game_bar_list[i].span)
+        this.drawCell(i,this.game_bar_list[i]);
     }
 
   },
@@ -480,16 +534,12 @@ var UI = Class.extend({
 
     this.drawCell(2,this.elements["up"]);
     this.drawCell(3,this.elements["down"]);
-    this.drawCell(4,{text:"select"});
-    this.drawCell(5,{text:"a ship"});
+    this.drawSpan(4,5,{text:"select a ship"});
 
   },
 
   spellSwipe : function () {
-    this.drawCell(2,{text:"S",fontpx:75});
-    this.drawCell(3,{text:"W",fontpx:75});
-    this.drawCell(4,{text:"IP",fontpx:75});
-    this.drawCell(5,{text:"E!",fontpx:75});
+    this.drawSpan(2,5,{text:"SWIPE!",fontpx:75});
   },
 
 });

@@ -298,8 +298,8 @@ server.use(
   {
     secret:"EKPKvu0iYI/H0iFHlmsfdpQtvsRMKcBj",
     store:gss,
-    saveUninitialized:true,
-    resave:true
+    saveUninitialized:false,
+    resave:false
   }
 ));
 
