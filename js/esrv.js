@@ -435,7 +435,7 @@ server.get(/\/\d+\/\d+$/,findGame,function (req,res){
 
 /* post request is a client sending data
  */
-server.post("*",findGame,function (req,res){
+server.post("{*inp}",findGame,function (req,res){
   if (typeof(req.body) != "object") {
     res.send(400);
     res.end();
